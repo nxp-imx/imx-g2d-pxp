@@ -1,9 +1,18 @@
+# Get all dirs with a Makefile
+TMP_DIRS := $(foreach dir, $(wildcard *), $(wildcard $(dir)/Makefile))
+DIRS := $(patsubst %/Makefile,%,$(TMP_DIRS))
 
-subdirs = $(shell /bin/ls -d */)
+.PHONY: all install clean
+.PHONY: $(DIRS)
+all: TARGET=all
+all: $(DIRS)
 
-%::
-	@for X in $(subdirs); do        \
-	    if [ -r "$$X/Makefile" ]; then \
-	        $(MAKE) -C $$X $@; \
-	    fi;                         \
-	done
+install: TARGET=install
+install: $(DIRS)
+
+clean: TARGET=clean
+clean : $(DIRS)
+
+$(DIRS):
+	$(MAKE) -C $@ $(TARGET)
+
