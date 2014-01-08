@@ -1,44 +1,41 @@
-#/*
-# *  Copyright (C) 2013-2014 Freescale Semiconductor, Inc.
-# *  All Rights Reserved.
-# *
-# *  The following programs are the sole property of Freescale Semiconductor Inc.,
-# *  and contain its proprietary and confidential information.
-# *
-# */
-#
-# Linux build file for g2d library
-#
-.PHONY: clean
+CC ?=$(CROSS_COMPILE)gcc
+AR ?=$(CROSS_COMPILE)ar
 
-AQROOT ?= ../../../driver/
+# list of platforms which want this test case
+INCLUDE_LIST:=IMX50 IMX51 IMX5 IMX6Q IMX6S
 
-include $(AQROOT)/makefile.linux.def
+OBJ = g2d.o
 
-OBJS := g2d.o
+LIBNAME = libg2d
+SONAMEVERSION = 0.7
+LFLAGS += -lpthread
 
-# build as shared library
-TARGET := libg2d.so
+ifeq ($(PLATFORM), $(findstring $(PLATFORM), $(INCLUDE_LIST)))
 
-CFLAGS += -I ../include -fPIC -I $(AQROOT)/sdk/inc -I$(ROOTFS_USR)/include
-ifeq ($(SDK_BUILD), 1)
-LFLAGS = -L $(SDK_DIR)/drivers -L $(ROOTFS_USR)/lib -lpxp -lpthread
+all: $(LIBNAME).so
+
+install: install_headers
+	@mkdir -p $(DEST_DIR)/usr/lib
+	cp -P $(LIBNAME).* $(DEST_DIR)/usr/lib
+
+install_headers:
+	@mkdir -p $(DEST_DIR)/usr/include
 else
-LFLAGS = -L $(ROOTFS_USR)/lib -lpxp -lpthread
+all install :
 endif
-
-CC = $(CROSS_COMPILE)gcc
-
-$(TARGET): $(OBJS)
-	$(CC) -shared -fPIC -Wl,-soname,$@ -o $@ $(OBJS) $(LFLAGS)
-ifeq ($(SDK_BUILD), 1)
-	-@cp $@ $(SDK_DIR)/drivers/
-endif
-	-@mkdir -p ../lib/
-	-@cp $@ ../lib/
-
-clean:
-	-@rm $(TARGET) $(OBJS)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) -D$(PLATFORM) $(INCLUDE) -Wall -O2 -fPIC -c $^ -o $@
+
+$(LIBNAME)-pxp.so: $(OBJ)
+	$(CC) -shared -nostartfiles -Wl,-soname,$(LIBNAME).so.$(SONAMEVERSION) $(LFLAGS) $^ -o $@
+
+$(LIBNAME).so: $(LIBNAME).so.$(SONAMEVERSION)
+	ln -s $< $@
+
+$(LIBNAME).so.$(SONAMEVERSION): $(LIBNAME)-pxp.so
+	ln -s $< $@
+
+.PHONY: clean
+clean:
+	rm -f $(LIBNAME)* $(OBJ)
