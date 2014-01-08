@@ -16,6 +16,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <pthread.h>
+#include <unistd.h>
 #include <linux/pxp_device.h>
 #include "g2d.h"
 
@@ -471,7 +472,6 @@ int g2d_free(struct g2d_buf *buf)
 #define PXP_COPY_THRESHOLD (16*16*4)
 int g2d_copy(void *handle, struct g2d_buf *d, struct g2d_buf* s, int size)
 {
-	int ret;
 	unsigned int blit_size;
 	struct pxp_config_data pxp_conf;
 	struct pxp_layer_param *src_param = NULL, *out_param = NULL;
@@ -541,8 +541,6 @@ int g2d_copy(void *handle, struct g2d_buf *d, struct g2d_buf* s, int size)
 
 int g2d_clear(void *handle, struct g2d_surface *area)
 {
-	int ret;
-	unsigned int clrColor;
 	struct pxp_config_data pxp_conf;
 	struct pxp_layer_param *out_param;
 	struct g2dContext *context = (struct g2dContext *)handle;
@@ -553,7 +551,7 @@ int g2d_clear(void *handle, struct g2d_surface *area)
 	}
 
 	if (area == NULL) {
-		g2d_printf("%s: invalid clear area\n", area);
+		g2d_printf("%s: invalid clear area\n", __func__);
 		return -1;
 	}
 
@@ -583,11 +581,9 @@ int g2d_clear(void *handle, struct g2d_surface *area)
 int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 {
 	int dest_bpp;
-	int ret;
 	int srcRotate, dstRotate;
 	struct pxp_config_data pxp_conf;
-	struct pxp_layer_param *src_param, *out_param, *third_param;
-	int hMirror = 0, vMirror = 0;
+	struct pxp_layer_param *src_param, *out_param, *third_param = NULL;
 	unsigned int srcWidth,srcHeight,dstWidth,dstHeight;
 	struct g2dContext *context = (struct g2dContext *)handle;
 
