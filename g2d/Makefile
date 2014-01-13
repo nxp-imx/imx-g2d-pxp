@@ -16,7 +16,7 @@ all: $(LIBNAME).so
 
 install: install_headers
 	@mkdir -p $(DEST_DIR)/usr/lib
-	cp -P $(LIBNAME).* $(DEST_DIR)/usr/lib
+	cp -P $(LIBNAME)* $(DEST_DIR)/usr/lib
 
 install_headers:
 	@mkdir -p $(DEST_DIR)/usr/include
