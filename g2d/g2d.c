@@ -571,6 +571,8 @@ int g2d_clear(void *handle, struct g2d_surface *area)
 	out_param->global_alpha_enable = 1;
 	out_param->global_alpha = (area->clrcolor >> 24) & 0xff;
 	pxp_conf.proc_data.bgcolor = area->clrcolor;
+	pxp_conf.proc_data.drect.width = area->width;
+	pxp_conf.proc_data.drect.height = area->height;
 
 	pxp_conf.handle = context->handle;
 	g2d_config_chan(&pxp_conf);
