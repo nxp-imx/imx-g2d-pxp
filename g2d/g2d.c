@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2013-2014 Freescale Semiconductor, Inc.
+ *  Copyright (C) 2013-2016 Freescale Semiconductor, Inc.
  *  All Rights Reserved.
  *
  *  The following programs are the sole property of Freescale Semiconductor Inc.,
@@ -25,7 +25,7 @@
 
 static int fd = -1;
 static int open_count;
-static pthread_spinlock_t lock;
+static pthread_mutex_t lock;
 
 #define g2d_config_chan(config)						       \
 do {									       \
@@ -42,8 +42,8 @@ struct g2dContext {
 	unsigned int blending;
 	unsigned int global_alpha_enable;
 	unsigned int current_type;
-	bool dither;
-	bool blend_dim;
+	unsigned char dither;
+	unsigned char blend_dim;
 };
 
 static int g2d_has_alpha(enum g2d_format format)
@@ -183,7 +183,7 @@ int g2d_open(void **handle)
 		goto err2;
 	}
 
-	pthread_spin_lock(&lock);
+	pthread_mutex_lock(&lock);
 	if (++open_count == 1) {
 		fd = open(PXP_DEV_NAME, O_RDWR);
 		if (fd < 0) {
@@ -198,7 +198,7 @@ int g2d_open(void **handle)
 		}
 	}
 	context->handle = channel;
-	pthread_spin_unlock(&lock);
+	pthread_mutex_unlock(&lock);
 
 	*handle = (void*)context;
 	return 0;
@@ -206,7 +206,7 @@ err0:
 	close(fd);
 	open_count--;
 err1:
-	pthread_spin_unlock(&lock);
+	pthread_mutex_unlock(&lock);
 	free(context);
 err2:
 	*handle = NULL;
@@ -223,16 +223,16 @@ int g2d_close(void *handle)
 		return -1;
 	}
 
-	pthread_spin_lock(&lock);
+	pthread_mutex_lock(&lock);
 	if (!open_count) {
-		pthread_spin_unlock(&lock);
+		pthread_mutex_unlock(&lock);
 		return 0;
 	}
 
 	if (open_count == 1) {
 		ret = ioctl(fd, PXP_IOC_PUT_CHAN, &context->handle);
 		if (ret < 0) {
-			pthread_spin_unlock(&lock);
+			pthread_mutex_unlock(&lock);
 			g2d_printf("%s: failed to put pxp channel!\n",
 				   __func__);
 			return -1;
@@ -241,7 +241,7 @@ int g2d_close(void *handle)
 		fd = -1;
 	}
 	open_count--;
-	pthread_spin_unlock(&lock);
+	pthread_mutex_unlock(&lock);
 
 	free(context);
 	handle = NULL;
