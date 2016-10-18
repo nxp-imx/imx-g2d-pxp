@@ -1,5 +1,6 @@
 /*
- *  Copyright (C) 2013-2014 Freescale Semiconductor, Inc.
+ *  Copyright (C) 2013-2015 Freescale Semiconductor, Inc.
+ *  Copyright 2017 NXP.
  *  All Rights Reserved.
  *
  *  The following programs are the sole property of Freescale Semiconductor Inc.,
@@ -18,6 +19,10 @@
  *	2013-04-09         Li Xianzhong      0.5            g2d alpha blending feature is enhanced
  *	2013-05-17         Li Xianzhong      0.6            support vg core in g2d library
  *	2013-12-23         Li Xianzhong      0.7            support blend dim feature
+ *	2014-03-20         Li Xianzhong      0.8            support pre-multipied & de-mutlipy out alpha
+ *  2015-04-10         Meng Mingming     0.9            support multiple source blit
+ *  2015-11-03         Meng Mingming     1.0            support query 2D hardware type and feature
+ *  2016-05-24         Meng Mingming     1.1            support get g2d_buf from dma fd
 */
 
 #ifndef __G2D_H__
@@ -26,6 +31,16 @@
 #ifdef __cplusplus
 extern "C"  {
 #endif
+
+#define G2D_VERSION_MAJOR   1
+#define G2D_VERSION_MINOR   1
+#define G2D_VERSION_PATCH   0
+
+/*
+ * swap - swap value of @a and @b
+ */
+#define swap(a, b) \
+        do { typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while (0)
 
 enum g2d_format
 {
@@ -41,6 +56,7 @@ enum g2d_format
      G2D_ABGR8888             = 7,
      G2D_XRGB8888             = 8,
      G2D_XBGR8888             = 9,
+     G2D_RGB888               = 10,
 
 //yuv formats
      G2D_NV12                 = 20,
@@ -57,12 +73,18 @@ enum g2d_format
 
 enum g2d_blend_func
 {
+//basic blend
     G2D_ZERO                  = 0,
     G2D_ONE                   = 1,
     G2D_SRC_ALPHA             = 2,
     G2D_ONE_MINUS_SRC_ALPHA   = 3,
     G2D_DST_ALPHA             = 4,
     G2D_ONE_MINUS_DST_ALPHA   = 5,
+
+// extensive blend is set with basic blend together,
+// such as, G2D_ONE | G2D_PRE_MULTIPLIED_ALPHA
+    G2D_PRE_MULTIPLIED_ALPHA  = 0x10,
+    G2D_DEMULTIPLY_OUT_ALPHA  = 0x20,
 };
 
 enum g2d_cap_mode
@@ -71,6 +93,16 @@ enum g2d_cap_mode
     G2D_DITHER                = 1,
     G2D_GLOBAL_ALPHA          = 2,//only support source global alpha
     G2D_BLEND_DIM             = 3,//support special blend effect
+    G2D_BLUR                  = 4,//blur effect
+};
+
+enum g2d_feature
+{
+    G2D_SCALING               = 0,
+    G2D_ROTATION,
+    G2D_SRC_YUV,
+    G2D_DST_YUV,
+    G2D_MULTI_SOURCE_BLT,
 };
 
 enum g2d_rotation
@@ -137,6 +169,12 @@ struct g2d_surface
     enum g2d_rotation rot;
 };
 
+struct g2d_surface_pair
+{
+    struct g2d_surface s;
+    struct g2d_surface d;
+};
+
 struct g2d_buf
 {
     void *buf_handle;
@@ -153,13 +191,16 @@ int g2d_make_current(void *handle, enum g2d_hardware_type type);
 int g2d_clear(void *handle, struct g2d_surface *area);
 int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst);
 int g2d_copy(void *handle, struct g2d_buf *d, struct g2d_buf* s, int size);
+int g2d_multi_blit(void *handle, struct g2d_surface_pair *sp[], int layers);
 
+int g2d_query_hardware(void *handle, enum g2d_hardware_type type, int *available);
+int g2d_query_feature(void *handle, enum g2d_feature feature, int *available);
 int g2d_query_cap(void *handle, enum g2d_cap_mode cap, int *enable);
 int g2d_enable(void *handle, enum g2d_cap_mode cap);
 int g2d_disable(void *handle, enum g2d_cap_mode cap);
 
-int g2d_cache_op(struct g2d_buf *buf, enum g2d_cache_mode op);
 struct g2d_buf *g2d_alloc(int size, int cacheable);
+struct g2d_buf *g2d_buf_from_fd(int fd);
 int g2d_free(struct g2d_buf *buf);
 
 int g2d_flush(void *handle);

@@ -1,5 +1,6 @@
 /*
  *  Copyright (C) 2013-2016 Freescale Semiconductor, Inc.
+ *  Copyright 2017 NXP.
  *  All Rights Reserved.
  *
  *  The following programs are the sole property of Freescale Semiconductor Inc.,
@@ -46,37 +47,25 @@ struct g2dContext {
 	unsigned char blend_dim;
 };
 
-static int g2d_has_alpha(enum g2d_format format)
-{
-	return format == G2D_BGRA8888 ? 1 : 0;
-}
-
-static int g2d_decide_overlay_support(unsigned int format)
+static unsigned int g2d_pxp_fmt_map(unsigned int format)
 {
 	switch(format) {
-	/* supported */
 	case G2D_RGB565:
+		return PXP_PIX_FMT_BGR565;
+	case G2D_BGR565:
 		return PXP_PIX_FMT_RGB565;
 	case G2D_BGRX8888:
-		return PXP_PIX_FMT_RGB32;
+		return PXP_PIX_FMT_XRGB32;
 	case G2D_BGRA8888:
+		return PXP_PIX_FMT_ARGB32;
+	case G2D_XRGB8888:
+		return PXP_PIX_FMT_BGRX32;
+	case G2D_ARGB8888:
 		return PXP_PIX_FMT_BGRA32;
-	/* unsupported */
-	default:
-		g2d_printf("%s: unsupported format for overlay\n", __func__);
-		break;
-	}
-
-	return -1;
-}
-
-static int g2d_decide_ps_support(unsigned int format)
-{
-	switch(format) {
-	case G2D_RGB565:
-		return PXP_PIX_FMT_RGB565;
-	case G2D_BGRX8888:
-		return PXP_PIX_FMT_RGB32;
+	case G2D_RGBA8888:
+		return PXP_PIX_FMT_ABGR32;
+	case G2D_RGBX8888:
+		return PXP_PIX_FMT_XBGR32;
 	/* yuv format */
 	case G2D_UYVY:
 		return PXP_PIX_FMT_UYVY;
@@ -99,41 +88,12 @@ static int g2d_decide_ps_support(unsigned int format)
 	case G2D_NV61:
 		return PXP_PIX_FMT_NV61;
 	default:
-		g2d_printf("%s: unsupported format for ps\n", __func__);
+		g2d_printf("%s: unsupported format 0x%x\n",
+			   __func__, format);
 		break;
 	}
 
-	return -1;
-}
-
-static int g2d_decide_out_support(unsigned int format)
-{
-	switch(format) {
-	case G2D_RGB565:
-		return PXP_PIX_FMT_RGB565;
-	case G2D_BGRX8888:
-		return PXP_PIX_FMT_RGB32;
-	case G2D_BGRA8888:
-		return PXP_PIX_FMT_BGRA32;
-	/* yuv format */
-	case G2D_UYVY:
-		return PXP_PIX_FMT_UYVY;
-	case G2D_VYUY:
-		return PXP_PIX_FMT_VYUY;
-	case G2D_NV12:
-		return PXP_PIX_FMT_NV12;
-	case G2D_NV21:
-		return PXP_PIX_FMT_NV21;
-	case G2D_NV16:
-		return PXP_PIX_FMT_NV16;
-	case G2D_NV61:
-		return PXP_PIX_FMT_NV61;
-	default:
-		g2d_printf("%s: unsupported format for output\n", __func__);
-		break;
-	}
-
-	return -1;
+	return 0;
 }
 
 static int g2d_get_bpp(unsigned int format)
@@ -143,6 +103,12 @@ static int g2d_get_bpp(unsigned int format)
 		return 16;
 	case G2D_BGRX8888:
 	case G2D_BGRA8888:
+	case G2D_RGBA8888:
+	case G2D_RGBX8888:
+	case G2D_ARGB8888:
+	case G2D_XRGB8888:
+	case G2D_ABGR8888:
+	case G2D_XBGR8888:
 		return 32;
 	case G2D_UYVY:
 	case G2D_YUYV:
@@ -443,6 +409,27 @@ err:
 	return NULL;
 }
 
+void g2d_fill_param(struct pxp_layer_param *param,
+		    struct g2d_surface *surf)
+{
+	param->left   = surf->left;
+	param->top    = surf->top;
+	param->width  = surf->right - surf->left;
+	param->height = surf->bottom - surf->top;
+	param->stride = surf->stride * g2d_get_bpp(surf->format);
+	param->paddr  = surf->planes[0];
+	param->pixel_fmt = g2d_pxp_fmt_map(surf->format);
+}
+
+static void g2d_fill_rect(struct g2d_surface *surf,
+			  struct rect *rect)
+{
+	rect->top    = surf->top;
+	rect->left   = surf->left;
+	rect->width  = surf->right  - surf->left;
+	rect->height = surf->bottom - surf->top;
+}
+
 int g2d_free(struct g2d_buf *buf)
 {
 	int ret;
@@ -557,8 +544,8 @@ int g2d_clear(void *handle, struct g2d_surface *area)
 
 	memset(&pxp_conf, 0, sizeof(struct pxp_config_data));
 	out_param = &(pxp_conf.out_param);
-	out_param->pixel_fmt = g2d_decide_out_support(area->format);
-	if (out_param->pixel_fmt < 0) {
+	out_param->pixel_fmt = g2d_pxp_fmt_map(area->format);
+	if (!out_param->pixel_fmt) {
 		g2d_printf("%s: unsupported output format\n", __func__);
 		return -1;
 	}
@@ -568,8 +555,7 @@ int g2d_clear(void *handle, struct g2d_surface *area)
 	out_param->stride = area->stride;
 	out_param->paddr  = area->planes[0];
 
-	out_param->global_alpha_enable = 1;
-	out_param->global_alpha = (area->clrcolor >> 24) & 0xff;
+	pxp_conf.proc_data.fill_en = 1;
 	pxp_conf.proc_data.bgcolor = area->clrcolor;
 	pxp_conf.proc_data.drect.width = area->width;
 	pxp_conf.proc_data.drect.height = area->height;
@@ -582,9 +568,9 @@ int g2d_clear(void *handle, struct g2d_surface *area)
 
 int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 {
-	int dest_bpp;
-	int srcRotate, dstRotate;
 	struct pxp_config_data pxp_conf;
+	struct pxp_proc_data *proc_data;
+	struct pxp_alpha *s0_alpha, *s1_alpha;
 	struct pxp_layer_param *src_param, *out_param, *third_param = NULL;
 	unsigned int srcWidth,srcHeight,dstWidth,dstHeight;
 	struct g2dContext *context = (struct g2dContext *)handle;
@@ -638,239 +624,125 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 	}
 
 	memset(&pxp_conf, 0, sizeof(struct pxp_config_data));
+	proc_data = &pxp_conf.proc_data;
 
-	if (g2d_has_alpha(src->format) ||
-	    (context->blending && context->global_alpha_enable &&
-	     src->global_alpha < 0xff)) {
-		src_param = &(pxp_conf.ol_param[0]);
-	}
-	else {
-		src_param = &(pxp_conf.s0_param);
-	}
+	src_param = &(pxp_conf.s0_param);
+	g2d_fill_param(src_param, src);
+
 	out_param = &(pxp_conf.out_param);
+	g2d_fill_param(out_param, dst);
 
-	src_param->pixel_fmt = (src_param == &(pxp_conf.s0_param)) ?
-				g2d_decide_ps_support(src->format) :
-				g2d_decide_overlay_support(src->format);
-	out_param->pixel_fmt = g2d_decide_out_support(dst->format);
-
-	if (src_param->pixel_fmt == 0 || out_param->pixel_fmt == 0) {
-		g2d_printf("%s: unsupport pixel format\n", __func__);
-		return -1;
+	if (context->blending) {
+		third_param = &(pxp_conf.ol_param[0]);
+		g2d_fill_param(third_param, dst);
 	}
-	dest_bpp = g2d_get_bpp(dst->format);
-
-	src_param->stride = src->stride;
-	out_param->stride = dst->stride;
-	src_param->width  = src->width;
-	src_param->height = src->height;
-	src_param->paddr  = src->planes[0];
-	out_param->paddr  = dst->planes[0] + (dst->top * dst->stride + dst->left) * (dest_bpp >> 3);
-
-	srcRotate = src->rot;
-	dstRotate = dst->rot;
-	pxp_conf.proc_data.hflip = ((srcRotate == G2D_FLIP_H) | (dstRotate == G2D_FLIP_H)) ? 1 : 0;
-	pxp_conf.proc_data.vflip = ((srcRotate == G2D_FLIP_V) | (dstRotate == G2D_FLIP_V)) ? 1 : 0;
-
-	if ((srcRotate == G2D_FLIP_H) || (srcRotate == G2D_FLIP_V))
-		srcRotate = 0;
-	if ((dstRotate == G2D_FLIP_H) || (dstRotate == G2D_FLIP_V))
-		dstRotate = 0;
-
-	switch(dstRotate - srcRotate) {
-		case 1:
-		case -3:
-			pxp_conf.proc_data.rotate = 90;
-			break;
-		case 2:
-		case -2:
-			pxp_conf.proc_data.rotate = 180;
-			break;
-		case 3:
-		case -1:
-			pxp_conf.proc_data.rotate = 270;
-			break;
-	}
-	if ((pxp_conf.proc_data.rotate == 90) || (pxp_conf.proc_data.rotate == 270)) {
-		if ((src->right - src->left) != (dst->bottom - dst->top) ||
-		    (src->bottom - src->top) != (dst->right - dst->left)) {
-			/* only ps engine can do scaling */
-			if (src_param == &(pxp_conf.ol_param[0])) {
-				g2d_printf("%s: format with alpha cannot be scaled\n", __func__);
-				return -1;
-			}
-		}
-	} else {
-		if ((src->right - src->left) != (dst->right - dst->left) ||
-		    (src->bottom - src->top) != (dst->bottom - dst->top)) {
-			/* only ps engine can do scaling */
-			if (src_param == &(pxp_conf.ol_param[0])) {
-				g2d_printf("%s: format with alpha cannot be scaled\n", __func__);
-				return -1;
-			}
-		}
+	switch (dst->rot) {
+	case G2D_ROTATION_0:
+		proc_data->rotate = 0;
+		break;
+	case G2D_ROTATION_90:
+		proc_data->rotate = 90;
+		break;
+	case G2D_ROTATION_180:
+		proc_data->rotate = 180;
+		break;
+	case G2D_ROTATION_270:
+		proc_data->rotate = 270;
+		break;
+	case G2D_FLIP_H:
+		proc_data->hflip  = 1;
+		break;
+	case G2D_FLIP_V:
+		proc_data->vflip  = 1;
+		break;
+	default:
+		break;
 	}
 
-	if (pxp_conf.proc_data.rotate && (src_param == &(pxp_conf.s0_param))) {
-		pxp_conf.proc_data.rot_pos = 1;
-	}
+	g2d_fill_rect(dst, &proc_data->drect);
 
-	if ((pxp_conf.proc_data.rotate == 90) || (pxp_conf.proc_data.rotate == 270)) {
-		if (src_param == &(pxp_conf.ol_param[0])) {
-			out_param->width  = pxp_conf.proc_data.drect.width  = dst->bottom - dst->top;
-			out_param->height = pxp_conf.proc_data.drect.height = dst->right  - dst->left;
-		} else {
-			out_param->width  = pxp_conf.proc_data.drect.width  = dst->right  - dst->left;
-			out_param->height = pxp_conf.proc_data.drect.height = dst->bottom - dst->top;
-		}
-	} else {
-		out_param->width  = pxp_conf.proc_data.drect.width  = dst->right  - dst->left;
-		out_param->height = pxp_conf.proc_data.drect.height = dst->bottom - dst->top;
-	}
 	/* need do alpha blending */
 	if (context->blending) {
-		if (src_param == &(pxp_conf.ol_param[0])) {
-			third_param = &(pxp_conf.s0_param);
-			third_param->pixel_fmt = g2d_decide_ps_support(dst->format);
-		} else {
-			third_param = &(pxp_conf.ol_param[0]);
-			third_param->pixel_fmt = g2d_decide_overlay_support(dst->format);
+		proc_data->combine_enable = 1;
+		proc_data->alpha_mode = ALPHA_MODE_PORTER_DUFF;
+		s0_alpha = &src_param->alpha;
+		s1_alpha = &third_param->alpha;
+
+		switch (src->blendfunc & 0xf) {
+		case G2D_ZERO:	/* Fs = 0 */
+			s1_alpha->alpha_mode  = ALPHA_MODE_STRAIGHT;
+			s1_alpha->global_alpha_mode = GLOBAL_ALPHA_MODE_OFF;
+			s1_alpha->color_mode  = COLOR_MODE_STRAIGHT;
+			s0_alpha->factor_mode = FACTOR_MODE_ZERO;
+			break;
+		case G2D_ONE:	/* Fs = 1 */
+			s1_alpha->alpha_mode  = ALPHA_MODE_STRAIGHT;
+			s1_alpha->global_alpha_mode = GLOBAL_ALPHA_MODE_OFF;
+			s1_alpha->color_mode  = COLOR_MODE_STRAIGHT;
+			s0_alpha->factor_mode = FACTOR_MODE_ONE;
+			break;
+		case G2D_DST_ALPHA:	/* Fs = Ad'' */
+			s1_alpha->alpha_mode  = ALPHA_MODE_STRAIGHT;
+			s1_alpha->global_alpha_mode = GLOBAL_ALPHA_MODE_OFF;
+			s1_alpha->color_mode  = COLOR_MODE_STRAIGHT;
+			s0_alpha->factor_mode = FACTOR_MODE_STRAIGHT;
+			break;
+		case G2D_ONE_MINUS_DST_ALPHA:	/* Fs = 1 - Ad'' */
+			s1_alpha->alpha_mode  = ALPHA_MODE_STRAIGHT;
+			s1_alpha->global_alpha_mode = GLOBAL_ALPHA_MODE_OFF;
+			s1_alpha->color_mode  = COLOR_MODE_STRAIGHT;
+			s0_alpha->factor_mode = FACTOR_MODE_INVERSED;
+			break;
+		default:
+			printf("%s: unsupported alpha mode for source\n", __func__);
+			break;
 		}
-		if (third_param->pixel_fmt == 0) {
-			g2d_printf("%s: unsupport blending type\n", __func__);
-			return -1;
+		if (context->global_alpha_enable) {
+			s1_alpha->global_alpha_mode  = GLOBAL_ALPHA_MODE_SCALE;
+			s1_alpha->global_alpha_value = dst->global_alpha;
 		}
 
-		pxp_conf.proc_data.combine_enable = 1;
+		switch(dst->blendfunc & 0xf) {
+		case G2D_ZERO:		/* Fd = 0 */
+			s0_alpha->alpha_mode  = ALPHA_MODE_STRAIGHT;
+			s0_alpha->global_alpha_mode = GLOBAL_ALPHA_MODE_OFF;
+			s0_alpha->color_mode  = COLOR_MODE_STRAIGHT;
+			s1_alpha->factor_mode = FACTOR_MODE_ZERO;
+			break;
+		case G2D_ONE:		/* Fd = 1 */
+			s0_alpha->alpha_mode  = ALPHA_MODE_STRAIGHT;
+			s0_alpha->global_alpha_mode = GLOBAL_ALPHA_MODE_OFF;
+			s0_alpha->color_mode  = COLOR_MODE_STRAIGHT;
+			s1_alpha->factor_mode = FACTOR_MODE_ONE;
+			break;
+		case G2D_SRC_ALPHA:	/* Fd = As'' */
+			s0_alpha->alpha_mode  = ALPHA_MODE_STRAIGHT;
+			s0_alpha->global_alpha_mode = GLOBAL_ALPHA_MODE_OFF;
+			s0_alpha->color_mode  = COLOR_MODE_STRAIGHT;
+			s1_alpha->factor_mode = FACTOR_MODE_STRAIGHT;
+			break;
+		case G2D_ONE_MINUS_SRC_ALPHA:	/* Fd = 1 - As'' */
+			s0_alpha->alpha_mode  = ALPHA_MODE_STRAIGHT;
+			s0_alpha->global_alpha_mode = GLOBAL_ALPHA_MODE_OFF;
+			s0_alpha->color_mode  = COLOR_MODE_STRAIGHT;
+			s1_alpha->factor_mode = FACTOR_MODE_INVERSED;
+			break;
+		default:
+			printf("%s: unsupported alpha mode destination\n", __func__);
+			break;
+		}
+		if (context->global_alpha_enable) {
+			s0_alpha->global_alpha_mode  = GLOBAL_ALPHA_MODE_SCALE;
+			s0_alpha->global_alpha_value = src->global_alpha;
+		}
 
-		if (src_param == &(pxp_conf.ol_param[0])) {
-			switch(src->blendfunc) {
-			case G2D_ZERO:  //Cs = Cs * 0
-				if (dst->blendfunc != G2D_ONE) {
-					g2d_printf("%s(line %d): unsupported blending operation\n",
-						   __func__, __LINE__);
-					return -1;
-				}
-				src_param->global_alpha_enable = 1;
-				src_param->global_alpha = 0xff;
-				src_param->global_override = 1;
-				break;
-			case G2D_ONE:   //Cs = Cs * 1
-				if (dst->blendfunc != G2D_ZERO) {
-					g2d_printf("%s(line %d): unsupported blending operation\n",
-						   __func__, __LINE__);
-					return -1;
-				}
-				src_param->global_alpha_enable = 1;
-				src_param->global_alpha = 0x0;
-				src_param->global_override = 1;
-				break;
-			case G2D_SRC_ALPHA: //Cs = Cs * As
-				if (dst->blendfunc != G2D_ONE_MINUS_SRC_ALPHA) {
-					g2d_printf("%s(line %d): unsupported blending operation\n",
-						   __func__, __LINE__);
-					return -1;
-				}
-				src_param->alpha_invert = 1;
-				break;
-			case G2D_ONE_MINUS_SRC_ALPHA:  //Cs = Cs * (1 - As)
-				if (dst->blendfunc != G2D_SRC_ALPHA) {
-					g2d_printf("%s(line %d): unsupported blending operation\n",
-						   __func__, __LINE__);
-					return -1;
-				}
-				break;
-			default:
-				g2d_printf("%s: unspported source blendfunc\n", __func__);
-				return -1;
-			}
-		} else {
-			switch(src->blendfunc) {
-			case G2D_ZERO:
-				if (dst->blendfunc != G2D_ONE) {
-					g2d_printf("%s(line %d): unsupported blending operation\n",
-						   __func__, __LINE__);
-					return -1;
-				}
-				third_param->global_alpha_enable = 1;
-				third_param->global_alpha = 0x0;
-				third_param->global_override = 1;
-				break;
-			case G2D_ONE:
-				if (dst->blendfunc != G2D_ZERO) {
-					g2d_printf("%s(line %d): unsupported blending operation\n",
-						   __func__, __LINE__);
-					return -1;
-				}
-				third_param->global_alpha_enable = 1;
-				third_param->global_alpha = 0xff;
-				third_param->global_override = 1;
-				break;
-			case G2D_DST_ALPHA: //Cs = Cs * Ad
-				if (dst->blendfunc != G2D_ONE_MINUS_DST_ALPHA) {
-					g2d_printf("%s(line %d): unsupported blending operation\n",
-						   __func__, __LINE__);
-					return -1;
-				}
-				break;
-			case G2D_ONE_MINUS_DST_ALPHA: //Cs = Cs * (1 - Ad)
-				if (dst->blendfunc != G2D_DST_ALPHA) {
-					g2d_printf("%s(line %d): unsupported blending operation\n",
-						   __func__, __LINE__);
-					return -1;
-				}
-				third_param->alpha_invert = 1;
-				break;
-			default:
-				g2d_printf("%s: unsupported source blendfunc\n", __func__);
-				return -1;
-			}
-		}
-		if (context->global_alpha_enable && (src->global_alpha < 0xff)) {
-			if (src_param == &(pxp_conf.ol_param[0])) {
-				src_param->global_alpha_enable = 1;
-				src_param->global_alpha = src->global_alpha & 0xff;
-			}
-			else {
-				g2d_printf("%s: source with global alpha should not be in PS\n", __func__);
-				return -1;
-			}
-		}
-		if (context->global_alpha_enable && (dst->global_alpha < 0xff)) {
-			if (src_param == &(pxp_conf.s0_param)) {
-				third_param->global_alpha_enable = 1;
-				third_param->global_alpha = dst->global_alpha & 0xff;
-			}
-			else {
-				g2d_printf("%s: dest with global alpha should not be in PS\n", __func__);
-				return -1;
-			}
-		}
+		if (src->blendfunc & G2D_PRE_MULTIPLIED_ALPHA)
+			s0_alpha->color_mode = COLOR_MODE_MULTIPLY;
+		if (dst->blendfunc & G2D_PRE_MULTIPLIED_ALPHA)
+			s1_alpha->color_mode = COLOR_MODE_MULTIPLY;
 	}
 
-	if (src_param == &(pxp_conf.s0_param)) {
-		pxp_conf.proc_data.srect.top    = src->top;
-		pxp_conf.proc_data.srect.left   = src->left;
-		if (pxp_conf.proc_data.rotate == 90 || pxp_conf.proc_data.rotate == 270) {
-			pxp_conf.proc_data.srect.width  = src->bottom - src->top;
-			pxp_conf.proc_data.srect.height = src->right  - src->left;
-		}
-		else {
-			pxp_conf.proc_data.srect.width  = src->right  - src->left;
-			pxp_conf.proc_data.srect.height = src->bottom - src->top;
-		}
-	}
-
-	if (context->blending) {
-		third_param->stride = out_param->stride;
-		third_param->width  = out_param->width;
-		third_param->height = out_param->height;
-		third_param->paddr  = out_param->paddr;
-		if (third_param == &(pxp_conf.s0_param)) {
-			pxp_conf.proc_data.srect.width  = out_param->width;
-			pxp_conf.proc_data.srect.height = out_param->height;
-		}
-	}
+	g2d_fill_rect(src, &proc_data->srect);
 
 	pxp_conf.handle = context->handle;
 	g2d_config_chan(&pxp_conf);
