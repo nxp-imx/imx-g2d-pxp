@@ -416,7 +416,7 @@ void g2d_fill_param(struct pxp_layer_param *param,
 	param->top    = surf->top;
 	param->width  = surf->right - surf->left;
 	param->height = surf->bottom - surf->top;
-	param->stride = surf->stride * g2d_get_bpp(surf->format);
+	param->stride = surf->stride * g2d_get_bpp(surf->format) >> 3;
 	param->paddr  = surf->planes[0];
 	param->pixel_fmt = g2d_pxp_fmt_map(surf->format);
 }
