@@ -21,8 +21,14 @@
 #include <linux/pxp_device.h>
 #include "g2d.h"
 
-#define PXP_DEV_NAME "/dev/pxp_device"
+#ifdef BUILD_FOR_ANDROID
+#include <cutils/log.h>
+#define g2d_printf ALOGI
+#else
 #define g2d_printf printf
+#endif
+
+#define PXP_DEV_NAME "/dev/pxp_device"
 
 static int fd = -1;
 static int open_count;
@@ -51,7 +57,11 @@ static unsigned int g2d_pxp_fmt_map(unsigned int format)
 {
 	switch(format) {
 	case G2D_RGB565:
+#ifdef BUILD_FOR_ANDROID
+		return PXP_PIX_FMT_RGB565;
+#else
 		return PXP_PIX_FMT_BGR565;
+#endif
 	case G2D_BGR565:
 		return PXP_PIX_FMT_RGB565;
 	case G2D_BGRX8888:
@@ -63,9 +73,17 @@ static unsigned int g2d_pxp_fmt_map(unsigned int format)
 	case G2D_ARGB8888:
 		return PXP_PIX_FMT_BGRA32;
 	case G2D_RGBA8888:
+#ifdef BUILD_FOR_ANDROID
+		return PXP_PIX_FMT_ARGB32;
+#else
 		return PXP_PIX_FMT_ABGR32;
+#endif
 	case G2D_RGBX8888:
+#ifdef BUILD_FOR_ANDROID
+		return PXP_PIX_FMT_XRGB32;
+#else
 		return PXP_PIX_FMT_XBGR32;
+#endif
 	/* yuv format */
 	case G2D_UYVY:
 		return PXP_PIX_FMT_UYVY;
