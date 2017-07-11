@@ -168,7 +168,7 @@ int g2d_open(void **handle)
 	}
 
 	pthread_mutex_lock(&lock);
-	if (++open_count == 1) {
+	if (++open_count == 1 || fd < 0) {
 		fd = open(PXP_DEV_NAME, O_RDWR);
 		if (fd < 0) {
 			g2d_printf("open pxp device failed!\n");
@@ -213,7 +213,7 @@ int g2d_close(void *handle)
 		return 0;
 	}
 
-	if (open_count == 1) {
+	if (open_count == 1 && fd > 0) {
 		ret = ioctl(fd, PXP_IOC_PUT_CHAN, &context->handle);
 		if (ret < 0) {
 			pthread_mutex_unlock(&lock);
@@ -254,6 +254,34 @@ int g2d_make_current(void *handle, enum g2d_hardware_type type)
 		return -1;
 	}
 	return 0;
+}
+
+int g2d_query_feature(void *handle, enum g2d_feature feature, int *available)
+{
+    struct g2dContext *context = (struct g2dContext*)handle;
+
+    if (context == NULL) {
+        g2d_printf("%s: invalid handle\n", __func__);
+        return -1;
+    }
+
+    if(!available) {
+        g2d_printf("%s: invalid param\n", __func__);
+        return -1;
+    }
+
+    switch(feature) {
+        case G2D_SCALING:
+        case G2D_SRC_YUV:
+        case G2D_DST_YUV:
+            *available = 1;
+            break;
+        default:
+            *available = 0;
+            break;
+    }
+
+    return 0;
 }
 
 int g2d_query_cap(void *handle, enum g2d_cap_mode cap, int *enable)
