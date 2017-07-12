@@ -669,11 +669,16 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 		return -1;
 	}
 
+	if (src->format >= G2D_NV12 && src->global_alpha == 0xff) {
+		context->blending = 0;
+	}
 	memset(&pxp_conf, 0, sizeof(struct pxp_config_data));
 	proc_data = &pxp_conf.proc_data;
 
 	src_param = &(pxp_conf.s0_param);
 	g2d_fill_param(src_param, src);
+	src_param->width = src->stride;
+	src_param->height = src->height;
 
 	out_param = &(pxp_conf.out_param);
 	g2d_fill_param(out_param, dst);
