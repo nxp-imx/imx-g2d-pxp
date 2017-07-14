@@ -596,9 +596,9 @@ int g2d_clear(void *handle, struct g2d_surface *area)
 		return -1;
 	}
 
-	out_param->width  = area->width;
+	out_param->width  = area->stride;
 	out_param->height = area->height;
-	out_param->stride = area->stride;
+	out_param->stride = area->stride * g2d_get_bpp(area->format) >> 3;
 	out_param->paddr  = area->planes[0];
 
 	pxp_conf.proc_data.fill_en = 1;
