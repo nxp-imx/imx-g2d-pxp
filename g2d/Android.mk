@@ -7,6 +7,7 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := \
 	g2d.c
 
+LOCAL_VENDOR_MODULE := true
 LOCAL_SHARED_LIBRARIES := libutils libc liblog
 
 LOCAL_CFLAGS:= -DBUILD_FOR_ANDROID -DLOG_TAG=\"g2d\"
