@@ -274,6 +274,7 @@ int g2d_query_feature(void *handle, enum g2d_feature feature, int *available)
         case G2D_SCALING:
         case G2D_SRC_YUV:
         case G2D_DST_YUV:
+        case G2D_ROTATION:
             *available = 1;
             break;
         default:
