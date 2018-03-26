@@ -274,7 +274,6 @@ int g2d_query_feature(void *handle, enum g2d_feature feature, int *available)
         case G2D_SCALING:
         case G2D_SRC_YUV:
         case G2D_DST_YUV:
-        case G2D_ROTATION:
             *available = 1;
             break;
         default:
@@ -613,7 +612,7 @@ int g2d_clear(void *handle, struct g2d_surface *area)
 	return 0;
 }
 
-static int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
+int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 {
 	struct pxp_config_data pxp_conf;
 	struct pxp_proc_data *proc_data;
@@ -684,21 +683,16 @@ static int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surfa
 	out_param = &(pxp_conf.out_param);
 	g2d_fill_param(out_param, dst);
 
-	if (context->blending && (dst->rot == G2D_ROTATION_0)) {
+	if (context->blending) {
 		third_param = &(pxp_conf.ol_param[0]);
 		g2d_fill_param(third_param, dst);
 	}
-
 	switch (dst->rot) {
 	case G2D_ROTATION_0:
 		proc_data->rotate = 0;
 		break;
 	case G2D_ROTATION_90:
 		proc_data->rotate = 90;
-		if(src->rot == G2D_FLIP_H)
-			proc_data->hflip  = 1;
-		else if(src->rot == G2D_FLIP_V)
-			proc_data->vflip  = 1;
 		break;
 	case G2D_ROTATION_180:
 		proc_data->rotate = 180;
@@ -719,7 +713,7 @@ static int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surfa
 	g2d_fill_rect(dst, &proc_data->drect);
 
 	/* need do alpha blending */
-	if (context->blending && (dst->rot == G2D_ROTATION_0)) {
+	if (context->blending) {
 		proc_data->combine_enable = 1;
 		proc_data->alpha_mode = ALPHA_MODE_PORTER_DUFF;
 		s0_alpha = &src_param->alpha;
@@ -754,7 +748,6 @@ static int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surfa
 			printf("%s: unsupported alpha mode for source\n", __func__);
 			break;
 		}
-
 		if (context->global_alpha_enable) {
 			s1_alpha->global_alpha_mode  = GLOBAL_ALPHA_MODE_SCALE;
 			s1_alpha->global_alpha_value = dst->global_alpha;
@@ -806,75 +799,6 @@ static int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surfa
 	g2d_config_chan(&pxp_conf);
 
 	return 0;
-}
-
-int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
-{
-	struct g2d_buf *g2d_tmp_buf = NULL;
-	struct g2d_surface dst_rotate_surface;
-	struct g2d_surface dst_blending_surface;
-	int ret = 0;
-
-	if (handle == NULL) {
-		g2d_printf("%s: Invalid handle!\n", __func__);
-		return -1;
-	}
-
-	if(!src || !dst)
-	{
-		g2d_printf("%s: Invalid src and dst parameters!\n", __func__);
-		return -1;
-	}
-
-	// PXP can't process rotation and alpha blending at the same time.
-	// So assemble to 2 steps. First rotation, then alpha blending.
-	if(dst->rot != G2D_ROTATION_0) {
-		// step 1: rotation without alpha blending.
-
-		// fix me, use the largest Bpp(4)
-		int size = dst->stride * dst->height * 4;
-		g2d_tmp_buf = g2d_alloc(size, 0);
-		if(g2d_tmp_buf == NULL) {
-			g2d_printf("%s: alloc tmp buf failed, size %d\n", __FUNCTION__, size);
-			return -1;
-		}
-
-		memcpy(&dst_rotate_surface, dst, sizeof(dst_rotate_surface));
-		dst_rotate_surface.planes[0] = g2d_tmp_buf->buf_paddr;
-
-		ret = g2d_blit_wrap(handle, src, &dst_rotate_surface);
-		if(ret) {
-			g2d_printf("%s: g2d_blit_wrap failed, ret %d\n", __FUNCTION__, ret);
-			return ret;
-		}
-
-		ret = g2d_finish(handle);
-		if(ret) {
-			g2d_printf("%s: g2d_finish failed, ret %d\n", __FUNCTION__, ret);
-			return ret;
-		}
-
-		// prepare step 2: alpha blending
-		dst_rotate_surface.blendfunc = src->blendfunc;
-		dst_rotate_surface.global_alpha = src->global_alpha;
-		dst_rotate_surface.clrcolor = src->clrcolor;
-		dst_rotate_surface.rot = G2D_ROTATION_0;
-
-		// copy dst to dst_blending_surface, so the input paramter keep un-change
-		memcpy(&dst_blending_surface, dst, sizeof(dst_blending_surface));
-		dst_blending_surface.rot = G2D_ROTATION_0;
-
-		src = &dst_rotate_surface;
-		dst = &dst_blending_surface;
-	}
-
-	ret = g2d_blit_wrap(handle, src, dst);
-
-	if(g2d_tmp_buf) {
-		g2d_free(g2d_tmp_buf);
-	}
-
-	return ret;
 }
 
 int g2d_flush(void *handle)
