@@ -458,10 +458,8 @@ err:
 void g2d_fill_param(struct pxp_layer_param *param,
 		    struct g2d_surface *surf)
 {
-	param->left   = surf->left;
-	param->top    = surf->top;
-	param->width  = surf->right - surf->left;
-	param->height = surf->bottom - surf->top;
+	param->width  = surf->width;
+	param->height = surf->height;
 	param->stride = surf->stride * g2d_get_bpp(surf->format) >> 3;
 	param->paddr  = surf->planes[0];
 	param->pixel_fmt = g2d_pxp_fmt_map(surf->format);
