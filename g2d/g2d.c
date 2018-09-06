@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2013-2016 Freescale Semiconductor, Inc.
- *  Copyright 2017 NXP.
+ *  Copyright 2017-2018 NXP.
  *  All Rights Reserved.
  *
  *  The following programs are the sole property of Freescale Semiconductor Inc.,
@@ -508,7 +508,8 @@ int g2d_copy(void *handle, struct g2d_buf *d, struct g2d_buf* s, int size)
 {
 	unsigned int blit_size;
 	struct pxp_config_data pxp_conf;
-	struct pxp_layer_param *src_param = NULL, *out_param = NULL;
+	struct pxp_layer_param *src_param = NULL, *out_param = NULL, *ol_param;
+	struct pxp_alpha *s0_alpha, *s1_alpha;
 
 	struct g2dContext *context = (struct g2dContext *)handle;
 
@@ -519,8 +520,12 @@ int g2d_copy(void *handle, struct g2d_buf *d, struct g2d_buf* s, int size)
 
 	memset(&pxp_conf, 0, sizeof(struct pxp_config_data));
 
-	src_param = &(pxp_conf.ol_param[0]);
+	src_param = &(pxp_conf.s0_param);
+	ol_param = &(pxp_conf.ol_param[0]);
 	out_param = &(pxp_conf.out_param);
+
+	s0_alpha = &src_param->alpha;
+	s1_alpha = &ol_param->alpha;
 
 	if (size < PXP_COPY_THRESHOLD) {
 		memcpy(d->buf_vaddr, s->buf_vaddr, size);
@@ -534,15 +539,19 @@ int g2d_copy(void *handle, struct g2d_buf *d, struct g2d_buf* s, int size)
 	}
 
 	src_param->stride = src_param->width;
-	src_param->pixel_fmt = PXP_PIX_FMT_BGRA32;
+	src_param->pixel_fmt = PXP_PIX_FMT_ARGB32;
 	src_param->height = size / (src_param->width << 2);
 	if (src_param->height > 16384)
 		src_param->height = 16384;
 
 	memcpy(out_param, src_param, sizeof(struct pxp_layer_param));
-	out_param->pixel_fmt = PXP_PIX_FMT_BGRA32;
+	out_param->pixel_fmt = PXP_PIX_FMT_ARGB32;
 	src_param->paddr = s->buf_paddr;
 	out_param->paddr = d->buf_paddr;
+
+	memcpy(ol_param, out_param, sizeof(struct pxp_layer_param));
+	ol_param->paddr = d->buf_paddr;
+	ol_param->pixel_fmt = PXP_PIX_FMT_ARGB32;
 
 	blit_size = src_param->width * src_param->height * 4;
 	pxp_conf.handle = context->handle;
@@ -550,6 +559,21 @@ int g2d_copy(void *handle, struct g2d_buf *d, struct g2d_buf* s, int size)
 	pxp_conf.proc_data.drect.left = 0;
 	pxp_conf.proc_data.drect.width = src_param->width;
 	pxp_conf.proc_data.drect.height = src_param->height;
+	memcpy(&pxp_conf.proc_data.srect, &pxp_conf.proc_data.drect,
+				sizeof(pxp_conf.proc_data.drect));
+	pxp_conf.proc_data.combine_enable = 1;
+
+	/* SRC */
+	s1_alpha->alpha_mode = ALPHA_MODE_STRAIGHT;
+	s1_alpha->global_alpha_mode = GLOBAL_ALPHA_MODE_OFF;
+	s1_alpha->color_mode = COLOR_MODE_STRAIGHT;
+	s0_alpha->factor_mode = FACTOR_MODE_ONE;
+
+	/* DST */
+	s0_alpha->alpha_mode  = ALPHA_MODE_STRAIGHT;
+	s0_alpha->global_alpha_mode = GLOBAL_ALPHA_MODE_OFF;
+	s0_alpha->color_mode = COLOR_MODE_STRAIGHT;
+	s1_alpha->factor_mode = FACTOR_MODE_ZERO;
 
 	g2d_config_chan(&pxp_conf);
 
