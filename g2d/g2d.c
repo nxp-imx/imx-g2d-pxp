@@ -580,11 +580,11 @@ int g2d_copy(void *handle, struct g2d_buf *d, struct g2d_buf* s, int size)
 		struct g2d_buf subs, subd;
 		subs.buf_size = d->buf_size - blit_size;
 		subd.buf_paddr = d->buf_paddr + blit_size;
-		subd.buf_vaddr = (void*)(((int)d->buf_vaddr) + blit_size);
+		subd.buf_vaddr = d->buf_vaddr + blit_size;
 
 		subs.buf_size = s->buf_size - blit_size;;
 		subs.buf_paddr = s->buf_paddr + blit_size;
-		subs.buf_vaddr = (void*)(((int)s->buf_vaddr) + blit_size);
+		subs.buf_vaddr = s->buf_vaddr + blit_size;
 		return g2d_copy(handle, &subs, &subd, size - blit_size);
 	}
 	else {
