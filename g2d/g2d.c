@@ -45,6 +45,26 @@ do {									       \
 	}								       \
 } while(0)
 
+#define g2dFALSE 0
+#define g2dTRUE  1
+
+typedef int g2dBOOL;
+typedef signed int g2dINT32;
+
+#ifdef __cplusplus
+	#define g2dNULL 0
+#else
+	#define g2dNULL ((void *) 0)
+#endif
+
+typedef struct _g2dRECT
+{
+	g2dINT32 left;
+	g2dINT32 top;
+	g2dINT32 right;
+	g2dINT32 bottom;
+}g2dRECT;
+
 struct g2dContext {
 	int handle;          /* allocated dma channel handle from PXP*/
 	unsigned int blending;
@@ -52,6 +72,12 @@ struct g2dContext {
 	unsigned int current_type;
 	unsigned char dither;
 	unsigned char blend_dim;
+
+	/* Clipping 2D flag */
+	g2dBOOL	clipping2D;
+
+	/* Clipping rectangle */
+	g2dRECT clipRect2D;
 };
 
 static unsigned int g2d_pxp_fmt_map(unsigned int format)
@@ -400,6 +426,27 @@ int g2d_disable(void *handle, enum g2d_cap_mode cap)
 	}
 
 	return 0;
+}
+
+int g2d_set_clipping(void *handle, int left, int top, int right, int bottom)
+{
+	struct g2dContext * context = g2dNULL;
+
+	context = (struct g2dContext *)handle;
+	if(!context)
+	{
+		g2d_printf("%s: Invalid handle !\n", __FUNCTION__);
+		return G2D_STATUS_FAIL;
+	}
+
+	context->clipRect2D.left = left;
+	context->clipRect2D.top = top;
+	context->clipRect2D.right = right;
+	context->clipRect2D.bottom = bottom;
+
+	context->clipping2D = g2dTRUE;
+
+	return G2D_STATUS_OK;
 }
 
 struct g2d_buf *g2d_alloc(int size, int cacheable)

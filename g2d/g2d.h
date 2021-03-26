@@ -128,6 +128,13 @@ enum g2d_hardware_type
     G2D_HARDWARE_VG           = 1,
 };
 
+enum g2d_status
+{
+    G2D_STATUS_FAIL           =-1,
+    G2D_STATUS_OK             = 0,
+    G2D_STATUS_NOT_SUPPORTED  = 1,
+};
+
 struct g2d_surface
 {
     enum g2d_format format;
