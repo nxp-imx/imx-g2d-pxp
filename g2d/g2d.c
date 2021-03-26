@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <linux/pxp_device.h>
 #include "g2d.h"
+#include "g2dExt.h"
 
 #ifdef BUILD_FOR_ANDROID
 #include <cutils/log.h>
@@ -822,6 +823,14 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 	g2d_config_chan(&pxp_conf);
 
 	return 0;
+}
+
+int g2d_blitEx(void *handle, struct g2d_surfaceEx *srcEx, struct g2d_surfaceEx *dstEx)
+{
+    struct g2d_surface *src = (struct g2d_surface *)srcEx;
+    struct g2d_surface *dst = (struct g2d_surface *)dstEx;
+
+    return g2d_blit(handle,src,dst);
 }
 
 int g2d_flush(void *handle)
