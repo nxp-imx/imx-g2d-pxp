@@ -643,18 +643,20 @@ int g2d_free(struct g2d_buf *buf)
 		return -1;
 	}
 
-	munmap(buf->buf_vaddr, buf->buf_size);
+	if (buf->buf_handle) {
+		munmap(buf->buf_vaddr, buf->buf_size);
 
-	memset(&mem_desc, 0, sizeof(struct pxp_mem_desc));
-	mem_desc.handle = *(unsigned int *)buf->buf_handle;
-	ret = ioctl(fd, PXP_IOC_PUT_PHYMEM, &mem_desc);
+		memset(&mem_desc, 0, sizeof(struct pxp_mem_desc));
+		mem_desc.handle = *(unsigned int *)buf->buf_handle;
+		ret = ioctl(fd, PXP_IOC_PUT_PHYMEM, &mem_desc);
 
-	if (ret < 0) {
-		g2d_printf("%s: free pxp physical memory failed\n", __func__);
-		return -1;
+		if (ret < 0) {
+			g2d_printf("%s: free pxp physical memory failed\n", __func__);
+			return -1;
+		}
+
+		free(buf->buf_handle);
 	}
-
-	free(buf->buf_handle);
 	free(buf);
 	return 0;
 }
