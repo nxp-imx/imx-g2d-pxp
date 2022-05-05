@@ -57,11 +57,7 @@ static unsigned int g2d_pxp_fmt_map(unsigned int format)
 {
 	switch(format) {
 	case G2D_RGB565:
-#ifdef BUILD_FOR_ANDROID
 		return PXP_PIX_FMT_RGB565;
-#else
-		return PXP_PIX_FMT_BGR565;
-#endif
 	case G2D_BGR565:
 		return PXP_PIX_FMT_RGB565;
 	case G2D_BGRX8888:
@@ -618,15 +614,20 @@ int g2d_clear(void *handle, struct g2d_surface *area)
 		return -1;
 	}
 
-	out_param->width  = area->stride;
-	out_param->height = area->height;
+	//BGR to RGB
+	area->clrcolor = ((area->clrcolor >> 16) & 0xff) |
+                 ((area->clrcolor << 16) & 0xff0000) |
+                 ((area->clrcolor & 0xff00ff00));
+
+	out_param->width  = area->right - area->left;
+	out_param->height = area->bottom - area->top;
 	out_param->stride = area->stride * g2d_get_bpp(area->format) >> 3;
-	out_param->paddr  = area->planes[0];
+	out_param->paddr  = area->planes[0] + (area->top * area->stride + area->left)*(g2d_get_bpp(area->format) >> 3);
 
 	pxp_conf.proc_data.fill_en = 1;
 	pxp_conf.proc_data.bgcolor = area->clrcolor;
-	pxp_conf.proc_data.drect.width = area->width;
-	pxp_conf.proc_data.drect.height = area->height;
+	pxp_conf.proc_data.drect.width = area->right - area->left;
+	pxp_conf.proc_data.drect.height = area->bottom - area->top;
 
 	pxp_conf.handle = context->handle;
 	g2d_config_chan(&pxp_conf);
