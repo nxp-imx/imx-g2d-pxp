@@ -19,6 +19,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <linux/pxp_device.h>
+#include <linux/dma-buf.h>
 #include "g2d.h"
 #include "g2dExt.h"
 
@@ -924,4 +925,46 @@ int g2d_finish(void *handle)
 	}
 
 	return 0;
+}
+
+static int
+g2d_ion_phys_dma(int fd, int dmafd, g2dINT32 *paddr, size_t *size)
+{
+	int ret = 0;
+	struct dma_buf_phys query;
+
+	ret = ioctl(dmafd, DMA_BUF_IOCTL_PHYS, &query);
+	*paddr = query.phys;
+
+	return ret;
+}
+
+struct g2d_buf * g2d_buf_from_fd(int fd)
+{
+	g2dINT32 physAddr = 0;
+	size_t size = 0;
+	struct g2d_buf *buf = NULL;
+
+	int ret;
+	int ion_fd = 0;
+
+	ret = g2d_ion_phys_dma(ion_fd, fd, &physAddr, &size);
+
+	if(ret < 0)
+		return NULL;
+
+	/* Construct g2d_buf */
+	buf = (struct g2d_buf *)calloc(1, sizeof(struct g2d_buf));
+	if(!buf)
+	{
+		g2d_printf("%s: Invalid g2d_buf !\n", __FUNCTION__);
+		return NULL;
+	}
+
+	buf->buf_paddr = (int)physAddr;
+	buf->buf_size  = size;
+	buf->buf_handle = NULL;
+	buf->buf_vaddr = NULL;
+
+	return buf;
 }

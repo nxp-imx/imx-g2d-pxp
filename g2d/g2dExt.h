@@ -83,6 +83,8 @@ int g2d_set_clipping(void *handle, int left, int top, int right, int bottom);
  */
 int g2d_set_csc_matrix(void *handle, const unsigned *matrix);
 
+struct g2d_buf *g2d_buf_from_fd(int fd);
+
 #ifdef __cplusplus
 }
 #endif
