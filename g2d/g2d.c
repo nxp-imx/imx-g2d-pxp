@@ -19,6 +19,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <linux/pxp_device.h>
+#include <math.h>
 #include <linux/dma-buf.h>
 #include "g2d.h"
 #include "g2dExt.h"
@@ -80,6 +81,118 @@ struct g2dContext {
 	/* Clipping rectangle */
 	g2dRECT clipRect2D;
 };
+
+static int checkSurfaceRect(struct g2d_surface *surface)
+{
+	int rectWidth, rectHeight;
+
+	if(!surface)
+	{
+		g2d_printf("%s: Invalid g2d_surface parameters!\n", __FUNCTION__);
+		return G2D_STATUS_FAIL;
+	}
+
+	rectWidth = surface->right - surface->left;
+	rectHeight = surface->bottom - surface->top;
+
+	if(rectWidth <=0 || rectHeight <= 0 || rectWidth > surface->width || rectHeight > surface->height || surface->width > surface->stride)
+	{
+		g2d_printf("%s: Invalid src rect, left %d, top %d, right %d, bottom %d, width %d, height %d, stride %d!\n",
+				__FUNCTION__, surface->left, surface->top, surface->right, surface->bottom, surface->width, surface->height, surface->stride);
+		return G2D_STATUS_FAIL;
+	}
+
+	return G2D_STATUS_OK;
+}
+
+static void updateSurfaceRect(struct g2d_surface *src, struct g2d_surface *dst, g2dRECT clipRect2D)
+{
+	int sr;        /* Source rectangle resize in pixels due to clipping */
+	double sx, sy; /* Scaling factor in x and y */
+
+	switch(src->rot)
+	{
+	case G2D_ROTATION_0:
+	default:
+		sx = (double)(src->right - src->left) / (double)(dst->right - dst->left);
+		sy = (double)(src->bottom - src->top) / (double)(dst->bottom - dst->top);
+
+		sr = floor((double)(clipRect2D.left - dst->left) * sx);
+		if (sr > 0) {
+			src->left = src->left + sr;
+		}
+
+		sr = floor((double)(clipRect2D.top - dst->top) * sy);
+		if (sr > 0) {
+			src->top = src->top + sr;
+		}
+
+		sr = floor((double)(dst->right - clipRect2D.right) * sx);
+		if (sr > 0) {
+			src->right = src->right - sr;
+		}
+
+		sr = floor((double)(dst->bottom - clipRect2D.bottom) * sy);
+		if (sr > 0) {
+			src->bottom = src->bottom - sr;
+		}
+
+		break;
+	case G2D_ROTATION_90:
+	case G2D_ROTATION_270:
+		sx = (double)(src->right - src->left) / (double)(dst->bottom - dst->top);
+		sy = (double)(src->bottom - src->top) / (double)(dst->right - dst->left);
+
+		sr = floor((double)(clipRect2D.top - dst->top) * sx);
+		if (sr > 0)
+		{
+			src->left = src->left + sr;
+		}
+
+		sr = floor((double)(clipRect2D.left - dst->left) * sy);
+		if (sr > 0)
+		{
+			src->top = src->top + sr;
+		}
+
+		sr = floor((double)(dst->right - clipRect2D.right) * sx);
+		if (sr > 0)
+		{
+			src->bottom = src->bottom - sr;
+		}
+
+		sr = floor((double)(dst->bottom - clipRect2D.bottom) * sy);
+		if (sr > 0)
+		{
+			src->right = src->right	- sr;
+		}
+
+	break;
+	}
+
+	if(src->width != 0 && src->height != 0)
+	{
+		src->right = (src->right < src->width) ? src->right : src->width;
+		src->bottom = (src->bottom < src->height) ? src->bottom : src->height;
+	}
+
+	if (dst->left < clipRect2D.left)
+	{
+		dst->left = clipRect2D.left;
+	}
+	if (dst->top < clipRect2D.top)
+	{
+		dst->top = clipRect2D.top;
+	}
+	if (dst->right > clipRect2D.right)
+	{
+		dst->right = clipRect2D.right;
+	}
+	if (dst->bottom > clipRect2D.bottom)
+	{
+		dst->bottom = clipRect2D.bottom;
+	}
+}
 
 static unsigned int g2d_pxp_fmt_map(unsigned int format)
 {
@@ -692,6 +805,8 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 	struct pxp_layer_param *src_param, *out_param, *third_param = NULL;
 	unsigned int srcWidth,srcHeight,dstWidth,dstHeight;
 	struct g2dContext *context = (struct g2dContext *)handle;
+	g2dRECT srcRect = {0,0,0,0}, dstRect = {0,0,0,0};
+	int ret = G2D_STATUS_FAIL;
 
 	if (context == NULL) {
 		g2d_printf("%s: Invalid handle!\n", __func__);
@@ -744,6 +859,46 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 	if (src->format >= G2D_NV12 && src->global_alpha == 0xff) {
 		context->blending = 0;
 	}
+
+	if(context->clipping2D)
+	{
+		srcRect.left = src->left; srcRect.top = src->top;
+		srcRect.right = src->right; srcRect.bottom = src->bottom;
+		dstRect.left = dst->left; dstRect.top = dst->top;
+		dstRect.right = dst->right; dstRect.bottom = dst->bottom;
+		updateSurfaceRect(src, dst, context->clipRect2D);
+
+		/* early exit if no dirty region in clipping area */
+		if (src->left >= src->right || src->top >= src->bottom)
+		{
+			ret = G2D_STATUS_OK;
+			goto done;
+		}
+
+		/* early exit if no dirty region in clipping area */
+		if (dst->left >= dst->right || dst->top >= dst->bottom)
+		{
+			ret = G2D_STATUS_OK;
+			goto done;
+		}
+
+		ret = checkSurfaceRect(src);
+		if(ret != G2D_STATUS_OK)
+		{
+			g2d_printf("%s: Invalid src clipping surface !\n", __FUNCTION__);
+			ret = G2D_STATUS_FAIL;
+			goto done;
+		}
+
+		ret = checkSurfaceRect(dst);
+		if(ret != G2D_STATUS_OK)
+		{
+			g2d_printf("%s: Invalid dst clipping surface !\n", __FUNCTION__);
+			ret = G2D_STATUS_FAIL;
+			goto done;
+		}
+	}
+
 	memset(&pxp_conf, 0, sizeof(struct pxp_config_data));
 	proc_data = &pxp_conf.proc_data;
 
@@ -755,9 +910,16 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 	out_param = &(pxp_conf.out_param);
 	g2d_fill_param(out_param, dst);
 
+	out_param->width = dst->right - dst->left;
+	out_param->height = dst->bottom - dst->top;
+	out_param->paddr = dst->planes[0] + (dst->top * dst->stride + dst->left)*(g2d_get_bpp(dst->format) >> 3);
+
 	if (context->blending) {
 		third_param = &(pxp_conf.ol_param[0]);
 		g2d_fill_param(third_param, dst);
+		third_param->width = dst->right - dst->left;
+		third_param->height = dst->bottom - dst->top;
+		third_param->paddr = dst->planes[0] + (dst->top * dst->stride + dst->left)*(g2d_get_bpp(dst->format) >> 3);
 	}
 	switch (dst->rot) {
 	case G2D_ROTATION_0:
@@ -867,10 +1029,26 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 
 	g2d_fill_rect(src, &proc_data->srect);
 
+	pxp_conf.proc_data.drect.left = 0;
+	pxp_conf.proc_data.drect.top = 0;
+
 	pxp_conf.handle = context->handle;
 	g2d_config_chan(&pxp_conf);
 
 	return 0;
+
+done:
+	if(context->clipping2D)
+	{
+		src->left = srcRect.left; src->top = srcRect.top;
+		src->right = srcRect.right; src->bottom = srcRect.bottom;
+
+		dst->left = dstRect.left; dst->top = dstRect.top;
+		dst->right = dstRect.right; dst->bottom = dstRect.bottom;
+		context->clipping2D = g2dFALSE;
+	}
+
+	return ret;
 }
 
 int g2d_blitEx(void *handle, struct g2d_surfaceEx *srcEx, struct g2d_surfaceEx *dstEx)
