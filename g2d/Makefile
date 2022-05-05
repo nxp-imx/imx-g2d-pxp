@@ -2,12 +2,14 @@ CC ?=$(CROSS_COMPILE)gcc
 AR ?=$(CROSS_COMPILE)ar
 
 # list of platforms which want this test case
-INCLUDE_LIST:=IMX50 IMX51 IMX5 IMX6Q IMX6S IMX7 IMX6UL
+INCLUDE_LIST:=IMX50 IMX51 IMX5 IMX6Q IMX6S IMX7 IMX6UL IMX93
 
 OBJ = g2d.o
 
 LIBNAME = libg2d
-SONAMEVERSION = 1.1
+#API version
+SONAMEVERSION := 2
+API_VERSION := $(SONAMEVERSION).1.0
 LDFLAGS += -lpthread
 
 ifeq ($(PLATFORM), $(findstring $(PLATFORM), $(INCLUDE_LIST)))
@@ -29,13 +31,13 @@ endif
 %.o: %.c
 	$(CC) -D$(PLATFORM) $(INCLUDE) -Wall -O2 -fPIC -c $^ -o $@
 
-$(LIBNAME)-pxp.so.$(SONAMEVERSION): $(OBJ)
+$(LIBNAME)-pxp.so.$(API_VERSION): $(OBJ)
 	$(CC) -shared -nostartfiles -Wl,-soname,$(LIBNAME).so.$(SONAMEVERSION) $(LDFLAGS) $^ -o $@
 
 $(LIBNAME).so: $(LIBNAME).so.$(SONAMEVERSION)
 	ln -s $< $@
 
-$(LIBNAME).so.$(SONAMEVERSION): $(LIBNAME)-pxp.so.$(SONAMEVERSION)
+$(LIBNAME).so.$(SONAMEVERSION): $(LIBNAME)-pxp.so.$(API_VERSION)
 	ln -s $< $@
 
 .PHONY: clean
