@@ -94,6 +94,7 @@ enum g2d_cap_mode
     G2D_GLOBAL_ALPHA          = 2,//only support source global alpha
     G2D_BLEND_DIM             = 3,//support special blend effect
     G2D_BLUR                  = 4,//blur effect
+    G2D_WARPING               = 5,//can perform warp/dewarp operations
 };
 
 enum g2d_feature
@@ -103,6 +104,7 @@ enum g2d_feature
     G2D_SRC_YUV,
     G2D_DST_YUV,
     G2D_MULTI_SOURCE_BLT,
+    G2D_WARP_DEWARP,
 };
 
 enum g2d_rotation
@@ -135,11 +137,13 @@ enum g2d_status
     G2D_STATUS_NOT_SUPPORTED  = 1,
 };
 
+typedef int    g2d_phys_addr_t;
+
 struct g2d_surface
 {
     enum g2d_format format;
 
-    int planes[3];//surface buffer addresses are set in physical planes separately
+    g2d_phys_addr_t planes[3];//surface buffer addresses are set in physical planes separately
                   //RGB:  planes[0] - RGB565/RGBA8888/RGBX8888/BGRA8888/BRGX8888
                   //NV12: planes[0] - Y, planes[1] - packed UV
                   //I420: planes[0] - Y, planes[1] - U, planes[2] - V

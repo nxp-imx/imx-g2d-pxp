@@ -62,6 +62,31 @@ enum g2d_tiling
     G2D_AMPHION_TILED_10BIT = 0x40,
 };
 
+enum g2d_warp_map_format
+{
+    G2D_WARP_MAP_PNT = 0,
+    G2D_WARP_MAP_DPNT,
+    G2D_WARP_MAP_DDPNT,
+};
+
+struct g2d_warp_coordinates
+{
+    g2d_phys_addr_t addr;
+
+    enum g2d_warp_map_format format;
+
+    int bpp;
+    int width;                      ///< surface width, in Pixels
+    int height;                     ///< surface height, in Pixels
+
+    unsigned int arb_start_x;       // 16.5 fixed point
+    unsigned int arb_start_y;       // 16.5 fixed point
+    unsigned int arb_delta_xx;      // 3.5 fixed point
+    unsigned int arb_delta_xy;      // 3.5 fixed point
+    unsigned int arb_delta_yx;      // 3.5 fixed point
+    unsigned int arb_delta_yy;      // 3.5 fixed point
+};
+
 struct g2d_surfaceEx
 {
     struct g2d_surface base;
@@ -91,6 +116,16 @@ struct g2d_buf *g2d_buf_from_fd(int fd);
  * @return		 valid fence fd(>=0) if successful; or -1 if failed or not supported
  */
 int g2d_create_fence_fd(void *handle);
+
+/**
+ * @brief Set coordinates plane for warp/dewarp operations.
+ *
+ * @param handle A g2d handle.
+ * @param coord  A pointer to a g2d_warp_coordinates structure containg all the
+ *				 coordinate plane parameters.
+ * @return int	 0 if successful; -1 if an error occured.
+ */
+int g2d_set_warp_coordinates(void *handle, struct g2d_warp_coordinates *coord);
 
 #ifdef __cplusplus
 }

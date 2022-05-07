@@ -414,6 +414,9 @@ int g2d_query_feature(void *handle, enum g2d_feature feature, int *available)
         case G2D_ROTATION:
             *available = 1;
             break;
+        case G2D_WARP_DEWARP:
+            *available = 0;
+            break;
         default:
             *available = 0;
             break;
@@ -441,6 +444,8 @@ int g2d_query_cap(void *handle, enum g2d_cap_mode cap, int *enable)
 	case G2D_GLOBAL_ALPHA:
 		*enable = (context->global_alpha_enable == 1);
 		break;
+	case G2D_WARPING:
+		return G2D_STATUS_NOT_SUPPORTED;
 	default:
 		g2d_printf("%s: unsupported capability %d\n", __func__, cap);
 		return -1;
@@ -510,6 +515,8 @@ int g2d_enable(void *handle, enum g2d_cap_mode cap)
 	case G2D_GLOBAL_ALPHA:
 		context->global_alpha_enable = 1;
 		break;
+	case G2D_WARPING:
+		return G2D_STATUS_NOT_SUPPORTED;
 	/*TODO PXP doesn't support dithering yet */
 	default:
 		g2d_printf("%s: unknown cap %d request\n", __func__, cap);
@@ -1230,4 +1237,11 @@ struct g2d_buf * g2d_buf_from_fd(int fd)
 int g2d_create_fence_fd(void *handle)
 {
 	return -1;
+}
+
+int g2d_set_warp_coordinates(void *handle, struct g2d_warp_coordinates *coord)
+{
+    /* Not supported by GPU 2D */
+
+    return -1;
 }
