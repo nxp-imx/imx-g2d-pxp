@@ -85,6 +85,13 @@ int g2d_set_csc_matrix(void *handle, const unsigned *matrix);
 
 struct g2d_buf *g2d_buf_from_fd(int fd);
 
+/**
+ * @brief Create fence fd
+ * @param handle A g2d handle.
+ * @return		 valid fence fd(>=0) if successful; or -1 if failed or not supported
+ */
+int g2d_create_fence_fd(void *handle);
+
 #ifdef __cplusplus
 }
 #endif

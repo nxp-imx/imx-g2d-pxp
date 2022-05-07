@@ -1226,3 +1226,8 @@ struct g2d_buf * g2d_buf_from_fd(int fd)
 
 	return buf;
 }
+
+int g2d_create_fence_fd(void *handle)
+{
+	return -1;
+}
