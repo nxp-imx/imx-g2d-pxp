@@ -22,7 +22,7 @@ install: install_headers
 
 install_headers:
 	@mkdir -p $(DEST_DIR)/usr/include
-	cp g2d.h $(DEST_DIR)/usr/include
+	cp g2d.h g2dExt.h $(DEST_DIR)/usr/include
 
 else
 all install :
