@@ -23,9 +23,12 @@
 #include <sys/mman.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <linux/const.h>
 #include <linux/pxp_device.h>
 #include <math.h>
 #include <linux/dma-buf.h>
+#include <linux/dma-heap.h>
+#include <errno.h>
 #include "g2d.h"
 #include "g2dExt.h"
 
@@ -37,6 +40,19 @@
 #endif
 
 #define PXP_DEV_NAME "/dev/pxp_device"
+
+#define DEVPATH "/dev/dma_heap"
+#define HEAPNAME_CACHED "linux,cma"
+#define HEAPNAME_UNCACHED "linux,cma-uncached"
+
+/* to align the pointer to the (next) page boundary */
+#define __PAGE_ALIGN(addr) __ALIGN(addr, __PAGE_SIZE)
+
+#define __PAGE_SHIFT 12
+#define __PAGE_SIZE (_AC(1, UL) << __PAGE_SHIFT)
+
+#define __ALIGN(x, a) __ALIGN_MASK(x, (typeof(x))(a)-1)
+#define __ALIGN_MASK(x, mask) (((x) + (mask)) & ~(mask))
 
 static int fd = -1;
 static int open_count;
@@ -86,6 +102,18 @@ struct g2dContext {
 	/* Clipping rectangle */
 	g2dRECT clipRect2D;
 };
+
+struct dma_buf {
+    unsigned long       paddr;
+    void                *vaddr;
+    int                 size;
+    void                *handle;
+    int                 dmafd;
+};
+
+static int devfd = -1;
+static int g2d_dev_open(int cacheable);
+static int g2d_dev_close(int devfd);
 
 static int checkSurfaceRect(struct g2d_surface *surface)
 {
@@ -325,6 +353,7 @@ int g2d_open(void **handle)
 	}
 	context->handle = channel;
 	pthread_mutex_unlock(&lock);
+	devfd = g2d_dev_open(0);
 
 	*handle = (void*)context;
 	return 0;
@@ -368,6 +397,7 @@ int g2d_close(void *handle)
 	}
 	open_count--;
 	pthread_mutex_unlock(&lock);
+	g2d_dev_close(devfd);
 
 	free(context);
 	handle = NULL;
@@ -576,56 +606,6 @@ int g2d_set_clipping(void *handle, int left, int top, int right, int bottom)
 	return G2D_STATUS_OK;
 }
 
-struct g2d_buf *g2d_alloc(int size, int cacheable)
-{
-	int ret;
-	void *addr;
-	struct g2d_buf *buf = NULL;
-	struct pxp_mem_desc mem_desc;
-
-	buf = (struct g2d_buf*)calloc(1, sizeof(struct g2d_buf));
-	if (buf ==  NULL) {
-		g2d_printf("%s: malloc g2d_buf failed\n", __func__);
-		return NULL;
-	}
-
-	buf->buf_handle = calloc(1, sizeof(unsigned int));
-	if (buf->buf_handle == NULL)
-		goto err;
-
-	memset(&mem_desc, 0, sizeof(mem_desc));
-	mem_desc.size  = size;
-	mem_desc.mtype = cacheable ? MEMORY_TYPE_CACHED : MEMORY_TYPE_UNCACHED;
-
-	ret = ioctl(fd, PXP_IOC_GET_PHYMEM, &mem_desc);
-
-	if (ret < 0) {
-		g2d_printf("%s: get pxp physical memory failed, ret = %d\n",
-			   __func__, ret);
-		goto err0;
-	}
-
-	addr = mmap(0, mem_desc.size, PROT_READ | PROT_WRITE,
-		    MAP_SHARED, fd, mem_desc.phys_addr);
-	if (addr < 0) {
-		g2d_printf("%s: map buffer failed\n", __func__);
-		ioctl(fd, PXP_IOC_PUT_PHYMEM, &mem_desc);
-		goto err0;
-	}
-	mem_desc.virt_uaddr = (unsigned int)addr;
-	*(unsigned int *)buf->buf_handle = mem_desc.handle;
-	buf->buf_vaddr = addr;
-	buf->buf_paddr = (int)mem_desc.phys_addr;
-	buf->buf_size  = mem_desc.size;
-
-	return buf;
-err0:
-	free(buf->buf_handle);
-err:
-	free(buf);
-	return NULL;
-}
-
 void g2d_fill_param(struct pxp_layer_param *param,
 		    struct g2d_surface *surf)
 {
@@ -643,34 +623,6 @@ static void g2d_fill_rect(struct g2d_surface *surf,
 	rect->left   = surf->left;
 	rect->width  = surf->right  - surf->left;
 	rect->height = surf->bottom - surf->top;
-}
-
-int g2d_free(struct g2d_buf *buf)
-{
-	int ret;
-	struct pxp_mem_desc mem_desc;
-
-	if (buf == NULL) {
-		g2d_printf("%s: Invalid g2d_buf to be freed\n", __func__);
-		return -1;
-	}
-
-	if (buf->buf_handle) {
-		munmap(buf->buf_vaddr, buf->buf_size);
-
-		memset(&mem_desc, 0, sizeof(struct pxp_mem_desc));
-		mem_desc.handle = *(unsigned int *)buf->buf_handle;
-		ret = ioctl(fd, PXP_IOC_PUT_PHYMEM, &mem_desc);
-
-		if (ret < 0) {
-			g2d_printf("%s: free pxp physical memory failed\n", __func__);
-			return -1;
-		}
-
-		free(buf->buf_handle);
-	}
-	free(buf);
-	return 0;
 }
 
 #define PXP_COPY_THRESHOLD (16*16*4)
@@ -1197,46 +1149,230 @@ int g2d_finish(void *handle)
 	return 0;
 }
 
-static int
-g2d_ion_phys_dma(int fd, int dmafd, g2dINT32 *paddr, size_t *size)
+static int g2d_dev_open(int cacheable)
 {
-	int ret = 0;
-	struct dma_buf_phys query;
+    int ret;
+    int devfd = -1;
+    char device[256];
 
-	ret = ioctl(dmafd, DMA_BUF_IOCTL_PHYS, &query);
-	*paddr = query.phys;
+    if (cacheable)
+        ret = snprintf(device, 256, "%s/%s", DEVPATH, HEAPNAME_CACHED);
+    else
+        ret = snprintf(device, 256, "%s/%s", DEVPATH, HEAPNAME_UNCACHED);
 
-	return ret;
+    if (ret < 0) {
+        g2d_printf("%s: snprintf failed\n", __FUNCTION__);
+        return G2D_STATUS_FAIL;
+    }
+
+    devfd = open(device, O_RDWR);
+    if (devfd < 0) {
+        g2d_printf("%s: open %s failed, %s\n", __FUNCTION__, device,
+                   strerror(errno));
+        return G2D_STATUS_FAIL;
+    }
+
+    return devfd;
+}
+
+static int g2d_dev_close(int devfd)
+{
+    if (devfd < 0) {
+        g2d_printf("%s: Invalid argument\n", __FUNCTION__);
+        return G2D_STATUS_FAIL;
+    }
+
+    if (close(devfd) < 0) {
+        g2d_printf("%s: close fd %d failed, %s\n", __FUNCTION__, devfd,
+                   strerror(errno));
+        return G2D_STATUS_FAIL;
+    }
+
+    return G2D_STATUS_OK;
+}
+
+static int dmabuf_map(int dmafd, size_t size, void **vaddr)
+{
+    void *addr;
+
+    addr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, dmafd, 0);
+    if (addr == MAP_FAILED) {
+        g2d_printf("%s: Could not mmap %s", __FUNCTION__, strerror(errno));
+        return G2D_STATUS_FAIL;
+    }
+
+    *vaddr = addr;
+    return G2D_STATUS_OK;
+}
+
+static void dmabuf_unmap(void *vaddr, size_t size)
+{
+    munmap(vaddr, size);
+}
+
+static int dmabuf_ioctl(int devfd, int req, void *arg)
+{
+    if (ioctl(devfd, req, arg) < 0) {
+        g2d_printf("%s: ioctl %x failed: %s\n", __FUNCTION__, req,
+                   strerror(errno));
+        return G2D_STATUS_FAIL;
+    }
+
+    return G2D_STATUS_OK;
+}
+
+static int dmabuf_get_phys(int dmafd, unsigned long *paddr)
+{
+    struct dma_buf_phys query;
+    int ret;
+
+    if (!paddr) {
+        g2d_printf("%s: Invalid argument\n", __FUNCTION__);
+        return G2D_STATUS_FAIL;
+    }
+
+    ret = dmabuf_ioctl(dmafd, DMA_BUF_IOCTL_PHYS, &query);
+    *paddr = query.phys;
+
+    return ret;
+}
+
+static int dmabuf_heap_alloc_fdflags(int devfd, size_t len, unsigned int devfd_flags,
+                                     unsigned int heap_flags, int *dmafd)
+{
+    struct dma_heap_allocation_data query = {
+        .len = len,
+        .fd = 0,
+        .fd_flags = devfd_flags,
+        .heap_flags = heap_flags,
+    };
+    int ret;
+
+    if (!dmafd) {
+        g2d_printf("%s: Invalid argument\n", __FUNCTION__);
+        return G2D_STATUS_FAIL;
+    }
+
+    ret = dmabuf_ioctl(devfd, DMA_HEAP_IOCTL_ALLOC, &query);
+    *dmafd = (int)query.fd;
+
+    return ret;
+}
+
+static int dmabuf_heap_alloc(int devfd, size_t len, unsigned int flags,
+                             int *dmafd)
+{
+    return dmabuf_heap_alloc_fdflags(devfd, len, O_RDWR | O_CLOEXEC, flags, dmafd);
+}
+
+struct g2d_buf *g2d_alloc(int size, int cacheable)
+{
+    struct g2d_buf *buf;
+    struct dma_buf * dma_buf_ptr = NULL;
+    size_t alignedSize = __PAGE_ALIGN(size);
+
+    dma_buf_ptr = (struct dma_buf *)calloc(1, sizeof(struct dma_buf));
+
+    if (dmabuf_heap_alloc(devfd, alignedSize, 0, &dma_buf_ptr->dmafd)) {
+        g2d_printf("%s: dmabuf heap alloc failed\n", __FUNCTION__);
+        return NULL;
+    }
+
+    if (dmabuf_get_phys(dma_buf_ptr->dmafd, &dma_buf_ptr->paddr)) {
+        g2d_printf("%s: dmabuf get phys failed\n", __FUNCTION__);
+        goto err_close;
+    }
+
+    if (dmabuf_map(dma_buf_ptr->dmafd, alignedSize, &dma_buf_ptr->vaddr)) {
+        g2d_printf("%s: dmabuf map failed\n", __FUNCTION__);
+        goto err_close;
+    }
+
+    dma_buf_ptr->size = alignedSize;
+
+    buf = (struct g2d_buf *)calloc(1, sizeof(struct g2d_buf));
+    if (!buf) {
+        g2d_printf("%s: calloc g2d_buf failed\n", __FUNCTION__);
+        goto err_unmap;
+    }
+
+    buf->buf_handle = (void *)dma_buf_ptr;
+    buf->buf_vaddr = dma_buf_ptr->vaddr;
+    buf->buf_paddr = (int)dma_buf_ptr->paddr;
+    buf->buf_size = (int)dma_buf_ptr->size;
+
+    return buf;
+
+err_unmap:
+    dmabuf_unmap(dma_buf_ptr->vaddr, alignedSize);
+err_close:
+    close(dma_buf_ptr->dmafd);
+    free(dma_buf_ptr);
+
+    return NULL;
+}
+
+int g2d_free(struct g2d_buf *buf)
+{
+    struct dma_buf * dma_buf_ptr = NULL;
+
+    if (!buf || !buf->buf_handle) {
+        g2d_printf("%s: Invalid argument\n", __FUNCTION__);
+        return G2D_STATUS_FAIL;
+    }
+
+    dma_buf_ptr = (struct dma_buf *)buf->buf_handle;
+    if(dma_buf_ptr->dmafd >= 0) {
+        dmabuf_unmap(dma_buf_ptr->vaddr, dma_buf_ptr->size);
+        close(dma_buf_ptr->dmafd);
+    }
+    free(dma_buf_ptr);
+    free(buf);
+
+    return G2D_STATUS_OK;
 }
 
 struct g2d_buf * g2d_buf_from_fd(int fd)
 {
-	g2dINT32 physAddr = 0;
-	size_t size = 0;
+	struct dma_buf *dma_buf_ptr = NULL;
 	struct g2d_buf *buf = NULL;
-
 	int ret;
-	int ion_fd = 0;
 
-	ret = g2d_ion_phys_dma(ion_fd, fd, &physAddr, &size);
+	dma_buf_ptr = (struct dma_buf *)calloc(1, sizeof(struct dma_buf));
+	dma_buf_ptr->dmafd = -1;
 
-	if(ret < 0)
+	ret = dmabuf_get_phys(fd, &dma_buf_ptr->paddr);
+	if(ret) {
+		g2d_printf("%s: dmabuf get phys failed\n", __FUNCTION__);
+		free(dma_buf_ptr);
 		return NULL;
+	}
 
 	/* Construct g2d_buf */
 	buf = (struct g2d_buf *)calloc(1, sizeof(struct g2d_buf));
 	if(!buf)
 	{
 		g2d_printf("%s: Invalid g2d_buf !\n", __FUNCTION__);
+		free(dma_buf_ptr);
 		return NULL;
 	}
 
-	buf->buf_paddr = (int)physAddr;
-	buf->buf_size  = size;
-	buf->buf_handle = NULL;
-	buf->buf_vaddr = NULL;
+	buf->buf_paddr = dma_buf_ptr->paddr;
+	buf->buf_handle = (void *)dma_buf_ptr;
 
 	return buf;
+}
+
+int g2d_buf_export_fd(struct g2d_buf *buf)
+{
+	struct dma_buf *dma_buf_ptr = (struct dma_buf *)buf->buf_handle;
+
+	if (dma_buf_ptr->dmafd < 0) {
+		g2d_printf("%s: Invalid fd\n", __FUNCTION__);
+		return -EINVAL;
+	}
+
+	return dma_buf_ptr->dmafd;
 }
 
 int g2d_create_fence_fd(void *handle)

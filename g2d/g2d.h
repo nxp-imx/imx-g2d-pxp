@@ -37,7 +37,7 @@
 extern "C"  {
 #endif
 
-#define G2D_VERSION_MAJOR   1
+#define G2D_VERSION_MAJOR   2
 #define G2D_VERSION_MINOR   1
 #define G2D_VERSION_PATCH   0
 
@@ -216,7 +216,6 @@ int g2d_enable(void *handle, enum g2d_cap_mode cap);
 int g2d_disable(void *handle, enum g2d_cap_mode cap);
 
 struct g2d_buf *g2d_alloc(int size, int cacheable);
-struct g2d_buf *g2d_buf_from_fd(int fd);
 int g2d_free(struct g2d_buf *buf);
 
 int g2d_flush(void *handle);
