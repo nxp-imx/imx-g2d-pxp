@@ -215,6 +215,7 @@ int g2d_query_cap(void *handle, enum g2d_cap_mode cap, int *enable);
 int g2d_enable(void *handle, enum g2d_cap_mode cap);
 int g2d_disable(void *handle, enum g2d_cap_mode cap);
 
+int g2d_cache_op(struct g2d_buf *buf, enum g2d_cache_mode op);
 struct g2d_buf *g2d_alloc(int size, int cacheable);
 int g2d_free(struct g2d_buf *buf);
 
