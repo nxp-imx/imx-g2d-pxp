@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2013-2016 Freescale Semiconductor, Inc.
- *  Copyright 2017-2019 NXP
+ *  Copyright 2017-2022 NXP
  *
  *  Permission is hereby granted, free of charge, to any person obtaining
  *  a copy of this software and associated documentation files (the
@@ -110,6 +110,7 @@ int g2d_set_csc_matrix(void *handle, const unsigned *matrix);
 
 struct g2d_buf *g2d_buf_from_fd(int fd);
 int g2d_buf_export_fd(struct g2d_buf *);
+struct g2d_buf *g2d_buf_from_virt_addr(void *vaddr, int size);
 
 /**
  * @brief Create fence fd

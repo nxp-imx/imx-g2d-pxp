@@ -1375,6 +1375,11 @@ int g2d_buf_export_fd(struct g2d_buf *buf)
 	return dma_buf_ptr->dmafd;
 }
 
+struct g2d_buf *g2d_buf_from_virt_addr(void *vaddr, int size) {
+	g2d_printf("%s: NOT SUPPORTED\n", __FUNCTION__);
+	return NULL;
+}
+
 int g2d_create_fence_fd(void *handle)
 {
 	return -1;
