@@ -613,6 +613,8 @@ void g2d_fill_param(struct pxp_layer_param *param,
 	param->height = surf->height;
 	param->stride = surf->stride * g2d_get_bpp(surf->format) >> 3;
 	param->paddr  = surf->planes[0];
+	param->paddr_u  = surf->planes[1];
+	param->paddr_v  = surf->planes[2];
 	param->pixel_fmt = g2d_pxp_fmt_map(surf->format);
 }
 
