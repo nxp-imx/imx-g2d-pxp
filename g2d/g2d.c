@@ -27,6 +27,9 @@
 #include <linux/pxp_device.h>
 #include <math.h>
 #include <linux/dma-buf.h>
+#ifdef BUILD_FOR_ANDROID
+#include <linux/dma-buf-imx.h>
+#endif
 #include <linux/dma-heap.h>
 #include <errno.h>
 #include "g2d.h"
@@ -1225,16 +1228,35 @@ static int dmabuf_ioctl(int devfd, int req, void *arg)
 
 static int dmabuf_get_phys(int dmafd, unsigned long *paddr)
 {
-    struct dma_buf_phys query;
-    int ret;
+    int ret = 0;
 
     if (!paddr) {
         g2d_printf("%s: Invalid argument\n", __FUNCTION__);
         return G2D_STATUS_FAIL;
     }
 
+#ifdef BUILD_FOR_ANDROID
+    struct dmabuf_imx_phys_data data;
+    int fd_;
+    fd_ = open("/dev/dmabuf_imx", O_RDONLY | O_CLOEXEC);
+    if (fd_ < 0) {
+        ALOGE("open /dev/dmabuf_imx failed: %s", strerror(errno));
+        return -EINVAL;
+     }
+    data.dmafd = dmafd;
+    if (ioctl(fd_, DMABUF_GET_PHYS, &data) < 0) {
+        ALOGE("%s DMABUF_GET_PHYS  failed",__func__);
+        close(fd_);
+        return -EINVAL;
+    } else
+        *paddr = data.phys;
+
+    close(fd_);
+#else
+    struct dma_buf_phys query;
     ret = dmabuf_ioctl(dmafd, DMA_BUF_IOCTL_PHYS, &query);
     *paddr = query.phys;
+#endif
 
     return ret;
 }
