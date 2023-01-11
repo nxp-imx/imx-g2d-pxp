@@ -494,47 +494,9 @@ int g2d_query_cap(void *handle, enum g2d_cap_mode cap, int *enable)
 
 int g2d_cache_op(struct g2d_buf *buf, enum g2d_cache_mode op)
 {
-	int ret;
-	unsigned int Bytes;
-	void *Logical;
-	struct pxp_mem_flush flush;
-
-	if (!buf) {
-		g2d_printf("%s: invalid buffer !\n", __func__);
-		return -1;
-	}
-
-	Bytes = buf->buf_size;
-	Logical = buf->buf_vaddr;
-
-	if (!Bytes || !Logical) {
-		g2d_printf("%s: invalid buffer data !\n", __func__);
-		return -1;
-	}
-
-	switch (op) {
-	case G2D_CACHE_CLEAN:
-		flush.type = CACHE_CLEAN;
-		break;
-	case G2D_CACHE_FLUSH:
-		flush.type = CACHE_FLUSH;
-		break;
-	case G2D_CACHE_INVALIDATE:
-		flush.type = CACHE_INVALIDATE;
-		break;
-	default:
-		g2d_printf("%s: invalid cache op !\n", __func__);
-		return -1;
-	}
-
-	flush.handle = *(unsigned int *)buf->buf_handle;
-	ret = ioctl(fd, PXP_IOC_FLUSH_PHYMEM, &flush);
-	if (ret < 0) {
-		g2d_printf("%s: flush dma buffer failed\n", __func__);
-		return -1;
-	}
-
-	return 0;
+    (void)buf;
+    (void)op;
+    return G2D_STATUS_NOT_SUPPORTED;
 }
 
 int g2d_enable(void *handle, enum g2d_cap_mode cap)
