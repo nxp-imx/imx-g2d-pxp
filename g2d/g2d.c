@@ -448,11 +448,11 @@ int g2d_query_feature(void *handle, enum g2d_feature feature, int *available)
     switch(feature) {
         case G2D_SCALING:
         case G2D_SRC_YUV:
-        case G2D_DST_YUV:
         case G2D_ROTATION:
             *available = 1;
             break;
         case G2D_WARP_DEWARP:
+        case G2D_DST_YUV:
             *available = 0;
             break;
         default:
