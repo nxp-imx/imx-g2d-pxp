@@ -12,13 +12,15 @@ SONAMEVERSION := 2
 API_VERSION := $(SONAMEVERSION).1.0
 LDFLAGS += -lpthread
 
+libdir ?= "/usr/lib"
+
 ifeq ($(PLATFORM), $(findstring $(PLATFORM), $(INCLUDE_LIST)))
 
 all: $(LIBNAME).so
 
 install: install_headers
-	@mkdir -p $(DEST_DIR)/usr/lib
-	cp -P $(LIBNAME)* $(DEST_DIR)/usr/lib
+	@mkdir -p $(DEST_DIR)${libdir}
+	cp -P $(LIBNAME)* $(DEST_DIR)${libdir}
 
 install_headers:
 	@mkdir -p $(DEST_DIR)/usr/include
