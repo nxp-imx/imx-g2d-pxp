@@ -578,8 +578,17 @@ void g2d_fill_param(struct pxp_layer_param *param,
 	param->height = surf->height;
 	param->stride = surf->stride * g2d_get_bpp(surf->format) >> 3;
 	param->paddr  = surf->planes[0];
-	param->paddr_u  = surf->planes[1];
-	param->paddr_v  = surf->planes[2];
+
+	// Need fill in accurate u/v address for 3 plane YUV(YUV422P/YUV420P).
+	// As G2D only support 3 plane YUV420P format(G2D_I420/G2D_YV12), here only consider G2D_YV12.
+	if (surf->format == G2D_YV12) {
+		param->paddr_u  = surf->planes[2];
+		param->paddr_v  = surf->planes[1];
+	}
+	else {
+		param->paddr_u  = surf->planes[1];
+		param->paddr_v  = surf->planes[2];
+	}
 	param->pixel_fmt = g2d_pxp_fmt_map(surf->format);
 }
 
