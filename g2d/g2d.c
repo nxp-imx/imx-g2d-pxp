@@ -864,6 +864,29 @@ int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surface *dst
 		third_param->height = dst->bottom - dst->top;
 		third_param->paddr = dst->planes[0] + (dst->top * dst->stride + dst->left)*(g2d_get_bpp(dst->format) >> 3);
 	}
+	switch (dst->rot) {
+	case G2D_ROTATION_0:
+		proc_data->rotate = 0;
+		break;
+	case G2D_ROTATION_90:
+		proc_data->rotate = 90;
+		break;
+	case G2D_ROTATION_180:
+		proc_data->rotate = 180;
+		break;
+	case G2D_ROTATION_270:
+		proc_data->rotate = 270;
+		break;
+	case G2D_FLIP_H:
+		proc_data->hflip  = 1;
+		break;
+	case G2D_FLIP_V:
+		proc_data->vflip  = 1;
+		break;
+	default:
+		break;
+	}
+
 	// PXP doesn't support src rotation
 	if(src->rot != G2D_ROTATION_0 && dst->rot == G2D_ROTATION_0) {
 		switch (src->rot) {
@@ -888,29 +911,6 @@ int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surface *dst
 		default:
 			break;
 		}
-	}
-
-	switch (dst->rot) {
-	case G2D_ROTATION_0:
-		proc_data->rotate = 0;
-		break;
-	case G2D_ROTATION_90:
-		proc_data->rotate = 90;
-		break;
-	case G2D_ROTATION_180:
-		proc_data->rotate = 180;
-		break;
-	case G2D_ROTATION_270:
-		proc_data->rotate = 270;
-		break;
-	case G2D_FLIP_H:
-		proc_data->hflip  = 1;
-		break;
-	case G2D_FLIP_V:
-		proc_data->vflip  = 1;
-		break;
-	default:
-		break;
 	}
 
 	g2d_fill_rect(dst, &proc_data->drect);
