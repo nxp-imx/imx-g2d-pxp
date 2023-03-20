@@ -41,12 +41,6 @@ extern "C"  {
 #define G2D_VERSION_MINOR   1
 #define G2D_VERSION_PATCH   0
 
-/*
- * swap - swap value of @a and @b
- */
-#define swap(a, b) \
-        do { typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while (0)
-
 enum g2d_format
 {
 //rgb formats
