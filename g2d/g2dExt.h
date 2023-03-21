@@ -17,7 +17,7 @@
  *  THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
  *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
- *  IN NO EVENT SHALL VIVANTE AND/OR ITS SUPPLIERS BE LIABLE FOR ANY
+ *  IN NO EVENT SHALL NXP AND/OR ITS SUPPLIERS BE LIABLE FOR ANY
  *  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  *  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  *  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
@@ -115,17 +115,17 @@ struct g2d_buf *g2d_buf_from_virt_addr(void *vaddr, int size);
 /**
  * @brief Create fence fd
  * @param handle A g2d handle.
- * @return		 valid fence fd(>=0) if successful; or -1 if failed or not supported
+ * @return       valid fence fd(>=0) if successful; or -1 if failed or not supported
  */
 int g2d_create_fence_fd(void *handle);
 
 /**
  * @brief Set coordinates plane for warp/dewarp operations.
- *
+ * 
  * @param handle A g2d handle.
  * @param coord  A pointer to a g2d_warp_coordinates structure containg all the
- *				 coordinate plane parameters.
- * @return int	 0 if successful; -1 if an error occured.
+ *               coordinate plane parameters.
+ * @return int   0 if successful; -1 if an error occured.
  */
 int g2d_set_warp_coordinates(void *handle, struct g2d_warp_coordinates *coord);
 
