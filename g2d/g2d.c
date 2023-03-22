@@ -118,6 +118,9 @@ static int devfd = -1;
 static int g2d_dev_open(int cacheable);
 static int g2d_dev_close(int devfd);
 
+void g2d_allocator_init(void);
+void g2d_allocator_deinit(void);
+
 static int checkSurfaceRect(struct g2d_surface *surface)
 {
 	int rectWidth, rectHeight;
@@ -356,7 +359,6 @@ int g2d_open(void **handle)
 	}
 	context->handle = channel;
 	pthread_mutex_unlock(&lock);
-	devfd = g2d_dev_open(0);
 
 	*handle = (void*)context;
 	return 0;
@@ -400,7 +402,6 @@ int g2d_close(void *handle)
 	}
 	open_count--;
 	pthread_mutex_unlock(&lock);
-	g2d_dev_close(devfd);
 
 	free(context);
 	handle = NULL;
@@ -1286,11 +1287,41 @@ static int dmabuf_heap_alloc(int devfd, size_t len, unsigned int flags,
     return dmabuf_heap_alloc_fdflags(devfd, len, O_RDWR | O_CLOEXEC, flags, dmafd);
 }
 
+static pthread_mutex_t g2d_allocator_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int g2d_allocator_reference_counter=0;
+
+void g2d_allocator_init(void)
+{
+    pthread_mutex_lock(&g2d_allocator_mutex);
+    g2d_allocator_reference_counter++;
+
+    if (devfd < 0)
+        devfd = g2d_dev_open(0);
+
+    pthread_mutex_unlock(&g2d_allocator_mutex);
+}
+
+void g2d_allocator_deinit(void)
+{
+    pthread_mutex_lock(&g2d_allocator_mutex);
+
+    if(--g2d_allocator_reference_counter > 0)
+        goto exit;
+
+    g2d_dev_close(devfd);
+    devfd = -1;
+
+exit:
+    pthread_mutex_unlock(&g2d_allocator_mutex);
+}
+
 struct g2d_buf *g2d_alloc(int size, int cacheable)
 {
     struct g2d_buf *buf;
     struct dma_buf * dma_buf_ptr = NULL;
     size_t alignedSize = __PAGE_ALIGN(size);
+
+    g2d_allocator_init();
 
     dma_buf_ptr = (struct dma_buf *)calloc(1, sizeof(struct dma_buf));
 
@@ -1336,6 +1367,8 @@ err_close:
 int g2d_free(struct g2d_buf *buf)
 {
     struct dma_buf * dma_buf_ptr = NULL;
+
+    g2d_allocator_deinit();
 
     if (!buf || !buf->buf_handle) {
         g2d_printf("%s: Invalid argument\n", __FUNCTION__);
