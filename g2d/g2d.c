@@ -112,9 +112,10 @@ struct dma_buf {
     int                 size;
     void                *handle;
     int                 dmafd;
+    bool                cacheable;
 };
 
-static int devfd = -1;
+static int devfdu = -1, devfdc = -1;
 static int g2d_dev_open(int cacheable);
 static int g2d_dev_close(int devfd);
 
@@ -492,9 +493,40 @@ int g2d_query_cap(void *handle, enum g2d_cap_mode cap, int *enable)
 
 int g2d_cache_op(struct g2d_buf *buf, enum g2d_cache_mode op)
 {
-    (void)buf;
-    (void)op;
-    return G2D_STATUS_NOT_SUPPORTED;
+    struct dma_buf * dma_buf_ptr = NULL;
+    struct pxp_mem_flush mem_flush;
+    unsigned int type;
+    int ret;
+
+    if (!buf || !buf->buf_handle) {
+        g2d_printf("%s: Invalid argument\n", __FUNCTION__);
+        return G2D_STATUS_FAIL;
+    }
+
+    dma_buf_ptr = (struct dma_buf *)buf->buf_handle;
+    if (!dma_buf_ptr->cacheable)
+        return G2D_STATUS_OK;
+
+    if (op == G2D_CACHE_CLEAN)
+        type = CACHE_CLEAN;
+    else if (op == G2D_CACHE_INVALIDATE)
+        type = CACHE_INVALIDATE;
+    else if (op == G2D_CACHE_FLUSH)
+        type = CACHE_FLUSH;
+    else
+        return G2D_STATUS_FAIL;
+
+    mem_flush.handle = 0;
+    mem_flush.dmabuf_fd = dma_buf_ptr->dmafd;
+    mem_flush.type = type;
+
+    ret = ioctl(fd, PXP_IOC_FLUSH_PHYMEM, &mem_flush);
+    if (ret < 0) {
+        g2d_printf("%s: failed to handle buffer cache\n", __func__);
+        return G2D_STATUS_FAIL;
+    }
+
+    return G2D_STATUS_OK;
 }
 
 int g2d_enable(void *handle, enum g2d_cap_mode cap)
@@ -1286,14 +1318,20 @@ static int dmabuf_heap_alloc(int devfd, size_t len, unsigned int flags,
 
 __attribute__((constructor)) void g2d_allocator_init(void)
 {
-    if (devfd < 0)
-        devfd = g2d_dev_open(0);
+    if (devfdu < 0)
+        devfdu = g2d_dev_open(0);
+
+    if (devfdc < 0)
+        devfdc = g2d_dev_open(1);
 }
 
 __attribute__((destructor)) void g2d_allocator_deinit(void)
 {
-    g2d_dev_close(devfd);
-    devfd = -1;
+    g2d_dev_close(devfdu);
+    devfdu = -1;
+
+    g2d_dev_close(devfdc);
+    devfdc = -1;
 }
 
 struct g2d_buf *g2d_alloc(int size, int cacheable)
@@ -1301,8 +1339,10 @@ struct g2d_buf *g2d_alloc(int size, int cacheable)
     struct g2d_buf *buf;
     struct dma_buf * dma_buf_ptr = NULL;
     size_t alignedSize = __PAGE_ALIGN(size);
+    int devfd = cacheable ? devfdc : devfdu;
 
     dma_buf_ptr = (struct dma_buf *)calloc(1, sizeof(struct dma_buf));
+    dma_buf_ptr->cacheable = cacheable;
 
     if (dmabuf_heap_alloc(devfd, alignedSize, 0, &dma_buf_ptr->dmafd)) {
         g2d_printf("%s: dmabuf heap alloc failed\n", __FUNCTION__);
