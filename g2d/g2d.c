@@ -779,7 +779,7 @@ int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surface *dst
 	unsigned int srcWidth,srcHeight,dstWidth,dstHeight;
 	struct g2dContext *context = (struct g2dContext *)handle;
 	g2dRECT srcRect = {0,0,0,0}, dstRect = {0,0,0,0};
-	int ret = G2D_STATUS_FAIL;
+	int ret = G2D_STATUS_OK;
 
 	if (context == NULL) {
 		g2d_printf("%s: Invalid handle!\n", __func__);
@@ -1034,10 +1034,8 @@ int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surface *dst
 	pxp_conf.handle = context->handle;
 	g2d_config_chan(&pxp_conf);
 
-	return 0;
-
 done:
-	if(context->clipping2D)
+	if(context->clipping2D && (src->rot == G2D_ROTATION_0))
 	{
 		src->left = srcRect.left; src->top = srcRect.top;
 		src->right = srcRect.right; src->bottom = srcRect.bottom;
