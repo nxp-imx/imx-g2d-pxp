@@ -1080,7 +1080,6 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 
 		memcpy(&dst_rotate_surface, dst, sizeof(dst_rotate_surface));
 		dst_rotate_surface.planes[0] = g2d_tmp_buf->buf_paddr;
-		dst_rotate_surface.format = src->format;
 
 		ret = g2d_blit_wrap(handle, src, &dst_rotate_surface);
 
