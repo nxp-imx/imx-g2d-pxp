@@ -841,6 +841,22 @@ int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surface *dst
 		dstRect.right = dst->right; dstRect.bottom = dst->bottom;
 		updateSurfaceRect(src, dst, context->clipRect2D);
 
+		/* Workaround for YUV color shift when window widths or horizontal offsets is not even */
+		if (src->format == G2D_YUYV) {
+			if ((srcRect.left - src->left) % 2 != 0) {
+				src->left++;
+				if ((src->right - src->left) % 2 != 0) {
+					src->right--;
+				}
+			}
+			if ((src->right - srcRect.right) % 2 != 0) {
+				src->right--;
+				if ((src->right - src->left) % 2 != 0) {
+					src->left++;
+				}
+			}
+		}
+
 		/* early exit if no dirty region in clipping area */
 		if (src->left >= src->right || src->top >= src->bottom)
 		{
