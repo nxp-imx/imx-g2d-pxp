@@ -833,6 +833,15 @@ int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surface *dst
 		context->blending = 0;
 	}
 
+	/* Workaround for YUV color shift when window widths or horizontal offsets is not even */
+	if (src->format == G2D_YUYV && ((src->right - src->left) % 2 != 0)) {
+		if (src->left == 0) {
+			src->right--;
+		} else {
+			src->left++;
+		}
+	}
+
 	if(context->clipping2D && (src->rot == G2D_ROTATION_0))
 	{
 		srcRect.left = src->left; srcRect.top = src->top;
