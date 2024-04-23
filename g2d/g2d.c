@@ -155,54 +155,83 @@ static void updateSurfaceRect(struct g2d_surface *src, struct g2d_surface *dst, 
 		sy = (double)(src->bottom - src->top) / (double)(dst->bottom - dst->top);
 
 		sr = floor((double)(clipRect2D.left - dst->left) * sx);
-		if (sr > 0) {
+		if (sr > 0)
 			src->left = src->left + sr;
-		}
 
 		sr = floor((double)(clipRect2D.top - dst->top) * sy);
-		if (sr > 0) {
+		if (sr > 0)
 			src->top = src->top + sr;
-		}
 
 		sr = floor((double)(dst->right - clipRect2D.right) * sx);
-		if (sr > 0) {
+		if (sr > 0)
 			src->right = src->right - sr;
-		}
 
 		sr = floor((double)(dst->bottom - clipRect2D.bottom) * sy);
-		if (sr > 0) {
+		if (sr > 0)
 			src->bottom = src->bottom - sr;
-		}
 
 		break;
 	case G2D_ROTATION_90:
+		sx = (double)(src->right - src->left) / (double)(dst->bottom - dst->top);
+		sy = (double)(src->bottom - src->top) / (double)(dst->right - dst->left);
+
+		sr = floor((double)(clipRect2D.top - dst->top) * sx);
+		if (sr > 0)
+			src->right = src->right - sr;
+
+		sr = floor((double)(clipRect2D.left - dst->left) * sy);
+		if (sr > 0)
+			src->top = src->top + sr;
+
+		sr = floor((double)(dst->right - clipRect2D.right) * sx);
+		if (sr > 0)
+			src->bottom = src->bottom - sr;
+
+		sr = floor((double)(dst->bottom - clipRect2D.bottom) * sy);
+		if (sr > 0)
+			src->left = src->left + sr;
+
+		break;
+	case G2D_ROTATION_180:
+		sx = (double)(src->right - src->left) / (double)(dst->right - dst->left);
+		sy = (double)(src->bottom - src->top) / (double)(dst->bottom - dst->top);
+
+		sr = floor((double)(clipRect2D.left - dst->left) * sx);
+		if (sr > 0)
+			src->right = src->right - sr;
+
+		sr = floor((double)(clipRect2D.top - dst->top) * sy);
+		if (sr > 0)
+			src->bottom = src->bottom - sr;
+
+		sr = floor((double)(dst->right - clipRect2D.right) * sx);
+		if (sr > 0)
+			src->left = src->left + sr;
+
+		sr = floor((double)(dst->bottom - clipRect2D.bottom) * sy);
+		if (sr > 0)
+			src->top = src->top + sr;
+
+		break;
 	case G2D_ROTATION_270:
 		sx = (double)(src->right - src->left) / (double)(dst->bottom - dst->top);
 		sy = (double)(src->bottom - src->top) / (double)(dst->right - dst->left);
 
 		sr = floor((double)(clipRect2D.top - dst->top) * sx);
 		if (sr > 0)
-		{
 			src->left = src->left + sr;
-		}
 
 		sr = floor((double)(clipRect2D.left - dst->left) * sy);
 		if (sr > 0)
-		{
 			src->top = src->top + sr;
-		}
 
 		sr = floor((double)(dst->right - clipRect2D.right) * sx);
 		if (sr > 0)
-		{
 			src->bottom = src->bottom - sr;
-		}
 
 		sr = floor((double)(dst->bottom - clipRect2D.bottom) * sy);
 		if (sr > 0)
-		{
 			src->right = src->right	- sr;
-		}
 
 	break;
 	}
