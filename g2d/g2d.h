@@ -45,6 +45,7 @@
  *	2020-01-08         Li Xianzhong      1.5            support BT_601 and BT_709
  *	2020-08-25         Petr Cach         1.6            support BGR888, support BT_601FR, BT_709FR
  *	2021-12-02         Li Xianzhong      2.0            Add g2d fence sync extension
+ *	2024-07-12         Guangliu Ding     2.2            support RGBA1010102 and GRAY8
 
 */
 
@@ -56,7 +57,7 @@ extern "C"  {
 #endif
 
 #define G2D_VERSION_MAJOR   2
-#define G2D_VERSION_MINOR   1
+#define G2D_VERSION_MINOR   2
 #define G2D_VERSION_PATCH   0
 
 enum g2d_format
@@ -80,6 +81,10 @@ enum g2d_format
      G2D_RGBX5551             = 13,    /* [0:4] Red;   [5:9] Green; [10:14] Blue; [15] don't care */
      G2D_BGRA5551             = 14,    /* [0:4] Blue;  [5:9] Green; [10:14] Red;  [15] Alpha       */
      G2D_BGRX5551             = 15,    /* [0:4] Blue;  [5:9] Green; [10:14] Red;  [15] don't care  */
+
+     G2D_RGBA1010102          = 16,    /* [0:9] Red;   [10:19] Green; [20:29] Blue; [30:31] Alpha     */
+
+     G2D_GRAY8                = 19,    /* [0:7] Gray                                                  */
 
 //yuv formats
      G2D_NV12                 = 20,   /* 2 plane 420 format; plane 1: [0:7] Y ; plane 2: [0:7] U; [8:15] V */
@@ -169,7 +174,7 @@ enum g2d_status
 #include <sys/types.h>
 typedef off64_t g2d_phys_addr_t;
 #else
-typedef int     g2d_phys_addr_t;
+typedef unsigned int     g2d_phys_addr_t;
 #endif
 
 struct g2d_surface
