@@ -459,6 +459,30 @@ int g2d_make_current(void *handle, enum g2d_hardware_type type)
 	return 0;
 }
 
+int g2d_query_hardware(void *handle, enum g2d_hardware_type type, int *available)
+{
+	struct g2dContext * context = (struct g2dContext *)handle;
+	if(!context)
+	{
+		g2d_printf("%s: Invalid handle !\n", __FUNCTION__);
+		return -1;
+	}
+
+	if(!available) return -1;
+
+	switch(type)
+	{
+	case G2D_HARDWARE_PXP:
+		*available = 1;
+		break;
+	default:
+		*available = 0;
+		break;
+	}
+
+	return 0;
+}
+
 int g2d_query_feature(void *handle, enum g2d_feature feature, int *available)
 {
     struct g2dContext *context = (struct g2dContext*)handle;
