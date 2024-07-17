@@ -159,8 +159,11 @@ enum g2d_cache_mode
 
 enum g2d_hardware_type
 {
-    G2D_HARDWARE_2D           = 0,//default type
-    G2D_HARDWARE_VG           = 1,
+    G2D_HARDWARE_2D           = 0,//GPU 2D
+    G2D_HARDWARE_VG           = 1,//GPU VG
+    G2D_HARDWARE_DPU_V1       = 2,//DPU V1
+    G2D_HARDWARE_DPU_V2       = 3,//DPU V2
+    G2D_HARDWARE_PXP          = 4,//PXP
 };
 
 enum g2d_status
