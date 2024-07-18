@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2013-2016 Freescale Semiconductor, Inc.
- *  Copyright 2017-2022 NXP
+ *  Copyright 2017-2024 NXP
  *
  *  Permission is hereby granted, free of charge, to any person obtaining
  *  a copy of this software and associated documentation files (the
@@ -221,7 +221,7 @@ struct g2d_buf
 {
     void *buf_handle;
     void *buf_vaddr;
-    int  buf_paddr;
+    g2d_phys_addr_t buf_paddr;
     int  buf_size;
 };
 
