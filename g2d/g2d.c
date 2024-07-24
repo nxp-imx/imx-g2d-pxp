@@ -385,6 +385,7 @@ int g2d_open(void **handle)
 		}
 	}
 	context->handle = channel;
+	context->current_type = G2D_HARDWARE_PXP;
 	pthread_mutex_unlock(&lock);
 
 	*handle = (void*)context;
@@ -449,7 +450,7 @@ int g2d_make_current(void *handle, enum g2d_hardware_type type)
 		return 0;
 
 	switch(type) {
-	case G2D_HARDWARE_2D:
+	case G2D_HARDWARE_PXP:
 		context->current_type = type;
 		break;
 	default:
