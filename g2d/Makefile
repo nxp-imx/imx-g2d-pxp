@@ -9,7 +9,7 @@ OBJ = g2d.o
 LIBNAME = libg2d
 #API version
 SONAMEVERSION := 2
-API_VERSION := $(SONAMEVERSION).2.0
+API_VERSION := $(SONAMEVERSION).3.0
 LDFLAGS += -lpthread
 
 libdir ?= "/usr/lib"
