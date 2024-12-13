@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -859,7 +860,7 @@ int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surface *dst
 
 		if(!src->planes[0])
 		{
-			g2d_printf("%s: Invalid src planes[0] pointer=0x%x !\n", __FUNCTION__, src->planes[0]);
+			g2d_printf("%s: Invalid src planes[0] pointer=0x%" PRIx64 " !\n", __FUNCTION__, (uint64_t)src->planes[0]);
 			return -1;
 		}
 	} else {
@@ -879,7 +880,7 @@ int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surface *dst
 
 	if(!dst->planes[0])
 	{
-		g2d_printf("%s: Invalid dst planes[0] pointer=0x%x !\n", __FUNCTION__, dst->planes[0]);
+		g2d_printf("%s: Invalid dst planes[0] pointer=0x%" PRIx64 " !\n", __FUNCTION__, (uint64_t)dst->planes[0]);
 		return -1;
 	}
 
