@@ -2,7 +2,7 @@ CC ?=$(CROSS_COMPILE)gcc
 AR ?=$(CROSS_COMPILE)ar
 
 # list of platforms which want this test case
-INCLUDE_LIST:=IMX50 IMX51 IMX5 IMX6Q IMX6S IMX7 IMX6UL IMX93
+INCLUDE_LIST:=IMX50 IMX51 IMX5 IMX6Q IMX6S IMX7 IMX6UL IMX93 IMX943
 
 OBJ = g2d.o
 
@@ -11,6 +11,9 @@ LIBNAME = libg2d
 SONAMEVERSION := 2
 API_VERSION := $(SONAMEVERSION).3.0
 LDFLAGS += -lpthread
+INCLUDE += -I../include
+INCLUDE += -I$(SDKTARGETSYSROOT)/usr/include
+INCLUDE += -I$(SDKTARGETSYSROOT)/usr/include/imx
 
 libdir ?= "/usr/lib"
 
