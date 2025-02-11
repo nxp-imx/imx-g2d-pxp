@@ -46,8 +46,13 @@
 #define PXP_DEV_NAME "/dev/pxp_device"
 
 #define DEVPATH "/dev/dma_heap"
+#ifdef BUILD_FOR_ANDROID
+#define HEAPNAME_CACHED "reserved"
+#define HEAPNAME_UNCACHED "reserved-uncached"
+#else
 #define HEAPNAME_CACHED "linux,cma"
 #define HEAPNAME_UNCACHED "linux,cma-uncached"
+#endif
 
 /* to align the pointer to the (next) page boundary */
 #define __PAGE_ALIGN(addr) __ALIGN(addr, __PAGE_SIZE)
@@ -277,17 +282,9 @@ static unsigned int g2d_pxp_fmt_map(unsigned int format)
 	case G2D_ARGB8888:
 		return PXP_PIX_FMT_BGRA32;
 	case G2D_RGBA8888:
-#ifdef BUILD_FOR_ANDROID
-		return PXP_PIX_FMT_ARGB32;
-#else
 		return PXP_PIX_FMT_ABGR32;
-#endif
 	case G2D_RGBX8888:
-#ifdef BUILD_FOR_ANDROID
-		return PXP_PIX_FMT_XRGB32;
-#else
 		return PXP_PIX_FMT_XBGR32;
-#endif
 	/* yuv format */
 	case G2D_UYVY:
 		return PXP_PIX_FMT_UYVY;
