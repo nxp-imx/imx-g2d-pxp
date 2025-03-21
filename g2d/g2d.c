@@ -279,12 +279,20 @@ static unsigned int g2d_pxp_fmt_map(unsigned int format)
 		return PXP_PIX_FMT_ARGB32;
 	case G2D_XRGB8888:
 		return PXP_PIX_FMT_BGRX32;
+	case G2D_XBGR8888:
+		return PXP_PIX_FMT_RGBX32;
 	case G2D_ARGB8888:
 		return PXP_PIX_FMT_BGRA32;
+	case G2D_ABGR8888:
+		return PXP_PIX_FMT_RGBA32;
 	case G2D_RGBA8888:
 		return PXP_PIX_FMT_ABGR32;
 	case G2D_RGBX8888:
 		return PXP_PIX_FMT_XBGR32;
+	case G2D_RGB888:
+		return PXP_PIX_FMT_BGR24;
+	case G2D_BGR888:
+		return PXP_PIX_FMT_RGB24;
 	/* yuv format */
 	case G2D_UYVY:
 		return PXP_PIX_FMT_UYVY;
@@ -320,6 +328,9 @@ static int g2d_get_bpp(unsigned int format)
 	switch(format) {
 	case G2D_RGB565:
 		return 16;
+	case G2D_RGB888:
+	case G2D_BGR888:
+		return 24;
 	case G2D_BGRX8888:
 	case G2D_BGRA8888:
 	case G2D_RGBA8888:
@@ -677,6 +688,8 @@ void g2d_fill_param(struct pxp_layer_param *param,
 	param->stride = surf->stride * g2d_get_bpp(surf->format) >> 3;
 	param->paddr  = surf->planes[0];
 
+	/*Only reverse yv12 UV plane for android, for yv12 normal display*/
+#ifdef BUILD_FOR_ANDROID
 	// Need fill in accurate u/v address for 3 plane YUV(YUV422P/YUV420P).
 	// As G2D only support 3 plane YUV420P format(G2D_I420/G2D_YV12), here only consider G2D_YV12.
 	if (surf->format == G2D_YV12) {
@@ -687,6 +700,11 @@ void g2d_fill_param(struct pxp_layer_param *param,
 		param->paddr_u  = surf->planes[1];
 		param->paddr_v  = surf->planes[2];
 	}
+#else
+	param->paddr_u  = surf->planes[1];
+	param->paddr_v  = surf->planes[2];
+#endif
+
 	param->pixel_fmt = g2d_pxp_fmt_map(surf->format);
 }
 
