@@ -19,6 +19,14 @@ libdir ?= "/usr/lib"
 
 ifeq ($(PLATFORM), $(findstring $(PLATFORM), $(INCLUDE_LIST)))
 
+ifeq ($(PLATFORM), IMX93)
+	CFLAGS += -DENABLE_HARDWARE_VERSION=1
+endif
+
+ifeq ($(PLATFORM), IMX943)
+	CFLAGS += -DENABLE_HARDWARE_VERSION=2
+endif
+
 all: $(LIBNAME).so
 
 install: install_headers
@@ -34,7 +42,7 @@ all install :
 endif
 
 %.o: %.c
-	$(CC) -D$(PLATFORM) $(INCLUDE) -Wall -O2 -fPIC -c $^ -o $@
+	$(CC) $(CFLAGS) -D$(PLATFORM) $(INCLUDE) -Wall -O2 -fPIC -c $^ -o $@
 
 $(LIBNAME)-pxp.so.$(API_VERSION): $(OBJ)
 	$(CC) -shared -nostartfiles -Wl,-soname,$(LIBNAME).so.$(SONAMEVERSION) $(LDFLAGS) $^ -o $@

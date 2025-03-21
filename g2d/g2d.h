@@ -164,7 +164,8 @@ enum g2d_hardware_type
     G2D_HARDWARE_VG           = 1,//GPU VG
     G2D_HARDWARE_DPU_V1       = 2,//DPU V1
     G2D_HARDWARE_DPU_V2       = 3,//DPU V2
-    G2D_HARDWARE_PXP          = 4,//PXP
+    G2D_HARDWARE_PXP_V1       = 4,//PXP V1
+    G2D_HARDWARE_PXP_V2       = 5,//PXP V2
 };
 
 enum g2d_status

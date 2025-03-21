@@ -383,7 +383,11 @@ int g2d_open(void **handle)
 		}
 	}
 	context->handle = channel;
-	context->current_type = G2D_HARDWARE_PXP;
+#if ENABLE_HARDWARE_VERSION == 1
+	context->current_type = G2D_HARDWARE_PXP_V1;
+#elif ENABLE_HARDWARE_VERSION == 2
+	context->current_type = G2D_HARDWARE_PXP_V2;
+#endif
 	pthread_mutex_unlock(&lock);
 
 	*handle = (void*)context;
@@ -448,9 +452,15 @@ int g2d_make_current(void *handle, enum g2d_hardware_type type)
 		return 0;
 
 	switch(type) {
-	case G2D_HARDWARE_PXP:
+#if ENABLE_HARDWARE_VERSION == 1
+	case G2D_HARDWARE_PXP_V1:
 		context->current_type = type;
 		break;
+#elif ENABLE_HARDWARE_VERSION == 2
+	case G2D_HARDWARE_PXP_V2:
+		context->current_type = type;
+		break;
+#endif
 	default:
 		g2d_printf("%s: unsupported hardware type %d\n", __func__, type);
 		return -1;
@@ -471,9 +481,15 @@ int g2d_query_hardware(void *handle, enum g2d_hardware_type type, int *available
 
 	switch(type)
 	{
-	case G2D_HARDWARE_PXP:
+#if ENABLE_HARDWARE_VERSION == 1
+	case G2D_HARDWARE_PXP_V1:
 		*available = 1;
 		break;
+#elif ENABLE_HARDWARE_VERSION == 2
+	case G2D_HARDWARE_PXP_V2:
+		*available = 1;
+		break;
+#endif
 	default:
 		*available = 0;
 		break;
