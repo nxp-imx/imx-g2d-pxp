@@ -9,7 +9,7 @@ OBJ = g2d.o
 LIBNAME = libg2d
 #API version
 SONAMEVERSION := 2
-API_VERSION := $(SONAMEVERSION).3.0
+API_VERSION := $(SONAMEVERSION).4.0
 LDFLAGS += -lpthread
 INCLUDE += -I../include
 INCLUDE += -I$(SDKTARGETSYSROOT)/usr/include

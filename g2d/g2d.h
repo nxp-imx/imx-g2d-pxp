@@ -47,6 +47,7 @@
  *	2021-12-02         Li Xianzhong      2.0            Add g2d fence sync extension
  *	2024-07-12         Guangliu Ding     2.2            support RGBA1010102 and GRAY8
  *	2024-11-13         Guangliu Ding     2.3            support deinterlace/48bit address/dct api
+ *	2025-04-17         Erkai Ji          2.4            Add PXP version support
 
 */
 
@@ -58,7 +59,7 @@ extern "C"  {
 #endif
 
 #define G2D_VERSION_MAJOR   2
-#define G2D_VERSION_MINOR   3
+#define G2D_VERSION_MINOR   4
 #define G2D_VERSION_PATCH   0
 
 enum g2d_format
