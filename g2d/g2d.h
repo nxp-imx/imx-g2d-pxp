@@ -65,12 +65,12 @@ extern "C"  {
 enum g2d_format
 {
 //rgb formats
-     G2D_RGB565               = 0,    /* [0:4] Blue;  [5:10] Green; [11:15] Red                      */
+     G2D_RGB565               = 0,    /* [0:4] Red;   [5:10] Green; [11:15] Blue                     */
      G2D_RGBA8888             = 1,    /* [0:7] Red;   [8:15] Green; [16:23] Blue; [23:31] Alpha      */
      G2D_RGBX8888             = 2,    /* [0:7] Red;   [8:15] Green; [16:23] Blue; [23:31] don't care */
      G2D_BGRA8888             = 3,    /* [0:7] Blue;  [8:15] Green; [16:23] Red; [23:31] Alpha       */
      G2D_BGRX8888             = 4,    /* [0:7] Blue;  [8:15] Green; [16:23] Red; [23:31] don't care  */
-     G2D_BGR565               = 5,    /* [0:4] Red;   [5:10] Green; [11:15] Blue                     */
+     G2D_BGR565               = 5,    /* [0:4] Blue;  [5:10] Green; [11:15] Red                      */
 
      G2D_ARGB8888             = 6,    /* [0:7] Alpha; [8:15] Red;   [16:23] Green; [23:31] Blue      */
      G2D_ABGR8888             = 7,    /* [0:7] Alpha; [8:15] Blue;  [16:23] Green; [23:31] Red       */
