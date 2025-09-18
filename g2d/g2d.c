@@ -148,12 +148,41 @@ static int checkSurfaceRect(struct g2d_surface *surface)
 	return G2D_STATUS_OK;
 }
 
+static enum g2d_rotation get_anticlockwise_rot(enum g2d_rotation src_rot, enum g2d_rotation dst_rot)
+{
+    enum g2d_rotation tmpRot;
+
+    tmpRot = src_rot;
+
+	/* Calculate anticlockwise rotation degree here */
+    if(dst_rot != G2D_ROTATION_0 && src_rot == G2D_ROTATION_0)
+    {
+		/* src_rot is for anticlockwise rotation and dst_rot is for clockwise rotation as default */
+        switch(dst_rot)
+        {
+            case G2D_ROTATION_90:
+                tmpRot = G2D_ROTATION_270;
+                break;
+            case G2D_ROTATION_270:
+                tmpRot = G2D_ROTATION_90;
+                break;
+            default:
+                tmpRot = dst_rot;
+                break;
+        }
+    }
+
+    return tmpRot;
+}
+
 static void updateSurfaceRect(struct g2d_surface *src, struct g2d_surface *dst, g2dRECT clipRect2D)
 {
+	enum g2d_rotation tmpRot;
 	int sr;        /* Source rectangle resize in pixels due to clipping */
 	double sx, sy; /* Scaling factor in x and y */
 
-	switch(src->rot)
+	tmpRot = get_anticlockwise_rot(src->rot, dst->rot);
+	switch(tmpRot)
 	{
 	case G2D_ROTATION_0:
 	default:
