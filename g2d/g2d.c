@@ -701,6 +701,12 @@ static void g2d_fill_rect(struct g2d_surface *surf,
 	rect->height = surf->bottom - surf->top;
 }
 
+int g2d_blit_dmabuf(void *handle, struct g2d_surface_dmabuf *src_dma, struct g2d_surface_dmabuf *dst_dma)
+{
+	g2d_printf("%s: g2d_blit_dmabuf is not supported on this hardware !\n", __FUNCTION__);
+	return G2D_STATUS_NOT_SUPPORTED;
+}
+
 #define PXP_COPY_THRESHOLD (16*16*4)
 int g2d_copy(void *handle, struct g2d_buf *d, struct g2d_buf* s, int size)
 {

@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2013-2016 Freescale Semiconductor, Inc.
- *  Copyright 2017-2022, 2024 NXP
+ *  Copyright 2017-2022, 2024-2025 NXP
  *
  *  Permission is hereby granted, free of charge, to any person obtaining
  *  a copy of this software and associated documentation files (the
@@ -97,7 +97,16 @@ struct g2d_surfaceEx
     int reserved[8];
 };
 
+struct g2d_surface_dmabuf
+{
+    struct g2d_surface base;
+    int plane_fd[3];
+    unsigned int plane_offset[3];
+};
+
 int g2d_blitEx(void *handle, struct g2d_surfaceEx *srcEx, struct g2d_surfaceEx *dstEx);
+
+int g2d_blit_dmabuf(void *handle, struct g2d_surface_dmabuf *src_dma, struct g2d_surface_dmabuf *dst_dma);
 
 int g2d_set_clipping(void *handle, int left, int top, int right, int bottom);
 
