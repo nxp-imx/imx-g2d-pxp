@@ -875,6 +875,16 @@ int g2d_clear(void *handle, struct g2d_surface *area)
 	return 0;
 }
 
+static int check_resize(struct g2d_surface *src, struct g2d_surface *dst)
+{
+	int src_width = src->right - src->left;
+	int src_height = src->bottom - src->top;
+	int dst_width = dst->right - dst->left;
+	int dst_height = dst->bottom - dst->top;
+
+	return (src_width != dst_width) || (src_height != dst_height);
+}
+
 int g2d_blit_wrap(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 {
 	struct pxp_config_data pxp_conf;
@@ -1196,10 +1206,14 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 		return -1;
 	}
 
-	// PXP can't process rotation and alpha blending at the same time.
-	// So assemble to 2 steps. First rotation, then alpha blending.
+	/* PXP can't process the following scenario at the same time.
+	 * 1. rotation and alpha blending
+	 * 2. rotation and scaling
+	 * So assemble them to seperate steps. First rotation, then scaling(if has) and alpha blending.
+	 */
+	g2dBOOL has_scaling = check_resize(src, dst) ? g2dTRUE : g2dFALSE;
 	if(src->rot != G2D_ROTATION_0) {
-		// step 1: rotation without alpha blending.
+		// prepare step 1: rotation without alpha blending.
 		// fix me, use the largest Bpp(4)
 		int size = dst->stride * dst->height * 4;
 		g2d_tmp_buf = g2d_alloc(size, 0);
@@ -1208,14 +1222,29 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 			return -1;
 		}
 
-		memcpy(&dst_rotate_surface, dst, sizeof(dst_rotate_surface));
-		dst_rotate_surface.planes[0] = g2d_tmp_buf->buf_paddr;
+		// judge here, if has scaling, then use src size as dst_rotate_surface to process scaling later.
+		if(has_scaling) {
+			memcpy(&dst_rotate_surface, dst, sizeof(dst_rotate_surface));
+			dst_rotate_surface.planes[0] = g2d_tmp_buf->buf_paddr;
+			dst_rotate_surface.left = src->left;
+			dst_rotate_surface.top = src->top;
+			dst_rotate_surface.right = src->right;
+			dst_rotate_surface.bottom = src->bottom;
 
-		ret = g2d_blit_wrap(handle, src, &dst_rotate_surface);
+			ret = g2d_blit_wrap(handle, src, &dst_rotate_surface);
+			if(ret) {
+				g2d_printf("%s: g2d_blit_wrap failed, ret %d\n", __FUNCTION__, ret);
+				return ret;
+			}
+		} else {
+			memcpy(&dst_rotate_surface, dst, sizeof(dst_rotate_surface));
+			dst_rotate_surface.planes[0] = g2d_tmp_buf->buf_paddr;
 
-		if(ret) {
-			g2d_printf("%s: g2d_blit_wrap failed, ret %d\n", __FUNCTION__, ret);
-			return ret;
+			ret = g2d_blit_wrap(handle, src, &dst_rotate_surface);
+			if(ret) {
+				g2d_printf("%s: g2d_blit_wrap failed, ret %d\n", __FUNCTION__, ret);
+				return ret;
+			}
 		}
 
 		// prepare step 2: alpha blending
