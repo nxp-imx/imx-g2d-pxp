@@ -877,10 +877,18 @@ int g2d_clear(void *handle, struct g2d_surface *area)
 
 static int check_resize(struct g2d_surface *src, struct g2d_surface *dst)
 {
+	enum g2d_rotation tmpRot;
+	tmpRot = get_anticlockwise_rot(src->rot, dst->rot);
+
 	int src_width = src->right - src->left;
 	int src_height = src->bottom - src->top;
 	int dst_width = dst->right - dst->left;
 	int dst_height = dst->bottom - dst->top;
+
+	if (tmpRot == G2D_ROTATION_90 || tmpRot == G2D_ROTATION_270) {
+		// 90 and 270 degree rotation will swap width and height
+		return (src_width != dst_height) || (src_height != dst_width);
+	}
 
 	return (src_width != dst_width) || (src_height != dst_height);
 }
@@ -1211,7 +1219,6 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 	 * 2. rotation and scaling
 	 * So assemble them to seperate steps. First rotation, then scaling(if has) and alpha blending.
 	 */
-	g2dBOOL has_scaling = check_resize(src, dst) ? g2dTRUE : g2dFALSE;
 	if(src->rot != G2D_ROTATION_0) {
 		// prepare step 1: rotation without alpha blending.
 		// fix me, use the largest Bpp(4)
@@ -1223,13 +1230,24 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 		}
 
 		// judge here, if has scaling, then use src size as dst_rotate_surface to process scaling later.
+		g2dBOOL has_scaling = check_resize(src, dst) ? g2dTRUE : g2dFALSE;
 		if(has_scaling) {
 			memcpy(&dst_rotate_surface, dst, sizeof(dst_rotate_surface));
 			dst_rotate_surface.planes[0] = g2d_tmp_buf->buf_paddr;
-			dst_rotate_surface.left = src->left;
-			dst_rotate_surface.top = src->top;
-			dst_rotate_surface.right = src->right;
-			dst_rotate_surface.bottom = src->bottom;
+
+			if (src->rot == G2D_ROTATION_90 || src->rot == G2D_ROTATION_270) {
+				dst_rotate_surface.width = src->bottom - src->top;
+				dst_rotate_surface.height = src->right - src->left;
+				dst_rotate_surface.stride = dst_rotate_surface.width;
+			} else {
+				dst_rotate_surface.width = src->right - src->left;
+				dst_rotate_surface.height = src->bottom - src->top;
+				dst_rotate_surface.stride = dst_rotate_surface.width;
+			}
+			dst_rotate_surface.left = 0;
+			dst_rotate_surface.top = 0;
+			dst_rotate_surface.right = dst_rotate_surface.width;
+			dst_rotate_surface.bottom = dst_rotate_surface.height;
 
 			ret = g2d_blit_wrap(handle, src, &dst_rotate_surface);
 			if(ret) {
