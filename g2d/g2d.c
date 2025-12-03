@@ -1215,7 +1215,7 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 
 		if(ret) {
 			g2d_printf("%s: g2d_blit_wrap failed, ret %d\n", __FUNCTION__, ret);
-			return ret;
+			goto clean;
 		}
 
 		// prepare step 2: alpha blending
@@ -1234,13 +1234,15 @@ int g2d_blit(void *handle, struct g2d_surface *src, struct g2d_surface *dst)
 		ret = g2d_blit_wrap(handle, src, dst);
 		if(ret) {
 			g2d_printf("%s: g2d_blit_wrap failed, ret %d\n", __FUNCTION__, ret);
-			return ret;
+			goto clean;
 		}
 		ret = g2d_finish(handle);
 		if(ret) {
 			g2d_printf("%s: g2d_finish failed, ret %d\n", __FUNCTION__, ret);
-			return ret;
+			goto clean;
 		}
+
+clean:
 		if(g2d_tmp_buf) {
 			g2d_free(g2d_tmp_buf);
 		}
