@@ -1,9 +1,8 @@
 /*
- *  Copyright (C) 2013-2016 Freescale Semiconductor, Inc.
- *  Copyright 2017-2026 NXP
+ * Copyright (C) 2013-2016 Freescale Semiconductor, Inc.
+ * Copyright 2017-2026 NXP
  *
- *  SPDX-License-Identifier: BSD-3-Clause
- *
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 /*
@@ -31,6 +30,7 @@
  *	2024-11-13         Guangliu Ding     2.3            support deinterlace/48bit address/dct api
  *	2025-04-17         Erkai Ji          2.4            Add PXP version support
  *	2025-08-25         Guangliu Ding     2.5            support dmabuf fd in src/dst buffer
+ *	2026-05-11         Guangliu Ding     2.6            support P010 (10bit NV12)
 
 */
 
@@ -42,7 +42,7 @@ extern "C"  {
 #endif
 
 #define G2D_VERSION_MAJOR   2
-#define G2D_VERSION_MINOR   5
+#define G2D_VERSION_MINOR   6
 #define G2D_VERSION_PATCH   0
 
 enum g2d_format
@@ -83,6 +83,10 @@ enum g2d_format
      G2D_VYUY                 = 27,   /* 1 plane 422 format; [0:7] V; [8:15; Y; [16:23] U; [24:31] Y */
      G2D_NV16                 = 28,   /* 2 plane 422 format; plane 1: [0:7] Y ; plane 2: [0:7] U; [8:15] V */
      G2D_NV61                 = 29,   /* 2 plane 422 format; plane 1: [0:7] Y ; plane 2: [0:7] V; [8:15] U */
+
+     G2D_NV12_P010            = 30,   /* 2 plane 420 format; plane 1: [0:5] don't care [6:15] Y;
+                                       *                     plane 2: [0:5] don't care [6:15] U; [16:21] don't care [22:31] V
+                                       */
 };
 
 enum g2d_blend_func
