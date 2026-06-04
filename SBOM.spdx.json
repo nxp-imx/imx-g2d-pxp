@@ -2,23 +2,23 @@
   "SPDXID": "SPDXRef-DOCUMENT",
   "spdxVersion": "SPDX-2.3",
   "creationInfo": {
-    "created": "2026-03-17T08:44:36Z",
+    "created": "2026-06-02T02:44:37Z",
     "creators": [
       "Organization: NXP"
     ],
     "licenseListVersion": "3.26"
   },
-  "name": "imx-g2d-pxp-master",
+  "name": "imx-g2d-pxp-lf-6.18.20-2.0.0",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "https://nxp.com/spdx/c9951f5d-5a57-4e84-bcd0-02f191fb0440",
+  "documentNamespace": "https://nxp.com/spdx/60354165-08a2-4a1d-b89e-b0b9e14a5988",
   "packages": [
     {
-      "SPDXID": "SPDXRef-package-c9951f5d-5a57-4e84-bcd0-02f191fb0440",
+      "SPDXID": "SPDXRef-package-60354165-08a2-4a1d-b89e-b0b9e14a5988",
       "name": "imx-g2d-pxp",
-      "versionInfo": "master",
-      "licenseConcluded": "(BSD-3-Clause)",
-      "licenseDeclared": "(BSD-3-Clause)",
-      "downloadLocation": "https://github.com/nxp-imx/imx-g2d-pxp",
+      "versionInfo": "lf-6.18.20-2.0.0",
+      "licenseConcluded": "BSD-3-Clause",
+      "licenseDeclared": "BSD-3-Clause",
+      "downloadLocation": "https://github.com/nxp-imx/imx-g2d-pxp -b lf-6.18.20-2.0.0",
       "originator": "Organization: NXP",
       "supplier": "NOASSERTION",
       "externalRefs": [],
@@ -29,7 +29,7 @@
     {
       "spdxElementId": "SPDXRef-DOCUMENT",
       "relationshipType": "DESCRIBES",
-      "relatedSpdxElement": "SPDXRef-package-c9951f5d-5a57-4e84-bcd0-02f191fb0440"
+      "relatedSpdxElement": "SPDXRef-package-60354165-08a2-4a1d-b89e-b0b9e14a5988"
     }
   ]
 }
