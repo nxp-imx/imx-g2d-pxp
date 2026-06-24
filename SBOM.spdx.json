@@ -2,23 +2,23 @@
   "SPDXID": "SPDXRef-DOCUMENT",
   "spdxVersion": "SPDX-2.3",
   "creationInfo": {
-    "created": "2026-06-02T02:44:37Z",
+    "created": "2026-06-24T07:36:03Z",
     "creators": [
       "Organization: NXP"
     ],
-    "licenseListVersion": "3.26"
+    "licenseListVersion": "3.28"
   },
-  "name": "imx-g2d-pxp-lf-6.18.20-2.0.0",
+  "name": "imx-g2d-pxp-android-16.0.0_2.0.0",
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "https://nxp.com/spdx/60354165-08a2-4a1d-b89e-b0b9e14a5988",
+  "documentNamespace": "https://nxp.com/spdx/fb8d7e61-ee26-454d-bd8e-69a3dd8f61a5",
   "packages": [
     {
-      "SPDXID": "SPDXRef-package-60354165-08a2-4a1d-b89e-b0b9e14a5988",
+      "SPDXID": "SPDXRef-package-fb8d7e61-ee26-454d-bd8e-69a3dd8f61a5",
       "name": "imx-g2d-pxp",
-      "versionInfo": "lf-6.18.20-2.0.0",
-      "licenseConcluded": "BSD-3-Clause",
-      "licenseDeclared": "BSD-3-Clause",
-      "downloadLocation": "https://github.com/nxp-imx/imx-g2d-pxp -b lf-6.18.20-2.0.0",
+      "versionInfo": "android-16.0.0_2.0.0",
+      "licenseConcluded": "(BSD-3-Clause)",
+      "licenseDeclared": "(BSD-3-Clause)",
+      "downloadLocation": "https://github.com/nxp-imx/imx-g2d-pxp",
       "originator": "Organization: NXP",
       "supplier": "NOASSERTION",
       "externalRefs": [],
@@ -29,7 +29,7 @@
     {
       "spdxElementId": "SPDXRef-DOCUMENT",
       "relationshipType": "DESCRIBES",
-      "relatedSpdxElement": "SPDXRef-package-60354165-08a2-4a1d-b89e-b0b9e14a5988"
+      "relatedSpdxElement": "SPDXRef-package-fb8d7e61-ee26-454d-bd8e-69a3dd8f61a5"
     }
   ]
 }
